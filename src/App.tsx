@@ -10,6 +10,8 @@ import Goals from "@/pages/admin/Goals";
 import Notifications from "@/pages/admin/Notifications";
 import Redeem from "@/pages/student/Redeem";
 import Me from "@/pages/student/Me";
+import StudentCard from "@/pages/student/Card";
+import Promotions from "@/pages/student/Promotions";
 
 function Routed() {
   const { user, loading } = useAuth();
@@ -17,13 +19,15 @@ function Routed() {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{t("loading")}</div>;
   if (!user) return <Login />;
   const isAdmin = user.role === "admin";
-  const home = isAdmin ? "/admin/generate" : "/redeem";
+  const home = isAdmin ? "/admin/generate" : "/card";
   return (
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Navigate to={home} replace />} />
         <Route path="/redeem" element={<Redeem />} />
         <Route path="/me" element={<Me />} />
+        <Route path="/card" element={<StudentCard />} />
+        <Route path="/promotions" element={<Promotions />} />
         {isAdmin && (
           <>
             <Route path="/admin/generate" element={<Generate />} />

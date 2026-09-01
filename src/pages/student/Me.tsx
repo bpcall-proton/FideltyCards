@@ -1,21 +1,27 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Gift, Star } from "lucide-react";
+import { Gift, PartyPopper, Star } from "lucide-react";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import type { StudentStatus, Transaction } from "@/lib/types";
 import { fmtDateTime, fmtInt } from "@/lib/utils";
-import { Badge, Button, buttonVariants, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { Badge, Button, buttonVariants, Card, CardContent, CardHeader, CardTitle, Modal } from "@/components/ui";
 import { GoalProgress } from "./Redeem";
 
 export default function Me() {
   const { t } = useI18n();
   const [status, setStatus] = useState<StudentStatus | null>(null);
   const [txs, setTxs] = useState<Transaction[]>([]);
+  const [popup, setPopup] = useState(false);
 
   const load = async () => {
     const [s, t] = await Promise.all([api.myStatus(), api.listTransactions()]);
     setStatus(s); setTxs(t);
+    const pendingIds = s.rewards.filter((r) => !r.redeemedAt).map((r) => r.id).join(",");
+    if (pendingIds && sessionStorage.getItem("fidelty-reward-popup") !== pendingIds) {
+      sessionStorage.setItem("fidelty-reward-popup", pendingIds);
+      setPopup(true);
+    }
   };
   useEffect(() => { void load(); }, []);
 
@@ -28,6 +34,15 @@ export default function Me() {
 
   return (
     <div className="max-w-md mx-auto space-y-4">
+      <Modal open={popup} onClose={() => setPopup(false)}>
+        <div className="text-center space-y-3">
+          <PartyPopper className="h-14 w-14 text-primary mx-auto" />
+          <h2 className="text-xl font-black">{t("rwTitle")}</h2>
+          {pending.map((r) => <div key={r.id} className="rounded-lg bg-primary/10 p-3 text-lg font-bold">🎁 {r.reward}</div>)}
+          <p className="text-sm text-muted-foreground">{t("rwBody")}</p>
+          <Button variant="outline" className="w-full" onClick={() => setPopup(false)}>{t("rwLater")}</Button>
+        </div>
+      </Modal>
       <Card className="bg-sidebar text-sidebar-foreground">
         <CardContent className="pt-6 text-center space-y-2">
           <div className="text-sm opacity-80">{t("meYourPoints")}</div>

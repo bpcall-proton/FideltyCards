@@ -3,10 +3,25 @@ import { initializeApp } from "firebase-admin/app";
 import { FieldValue, Timestamp, getFirestore, type Transaction } from "firebase-admin/firestore";
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
+import * as functionsV1 from "firebase-functions/v1";
 
 initializeApp();
 setGlobalOptions({ region: "europe-west1" });
 const db = getFirestore();
+
+const ADMIN_EMAILS = new Set(["software.bpcall@gmail.com"]);
+
+export const onUserCreated = functionsV1
+  .region("europe-west1")
+  .auth.user()
+  .onCreate(async (user) => {
+    const email = user.email?.toLowerCase();
+    if (!email || !ADMIN_EMAILS.has(email)) return;
+    await db.doc(`profiles/${user.uid}`).set(
+      { role: "admin", level: 1, fullName: user.displayName ?? email, createdAt: Timestamp.now() },
+      { merge: true },
+    );
+  });
 
 type ValueType = "points" | "quantity" | "bonus" | "product" | "promotion";
 type CodeFormat = "numeric" | "alphanumeric" | "qr" | "numeric_qr";

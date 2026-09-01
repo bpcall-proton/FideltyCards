@@ -1,8 +1,9 @@
 import { randomCode, normalizeCode } from "../codegen";
 import type {
-  AdminNotification, Code, GenerateLotInput, Goal, Lot, LoyaltyApi, RedeemResult,
+  AdminNotification, Code, GenerateLotInput, Goal, Lot, LoyaltyApi, Promotion, RedeemResult,
   StudentStatus, Transaction, UnlockedReward, User,
 } from "../types";
+import { activePromotions } from "../promotions";
 
 /**
  * Backend demo in localStorage: replica le stesse regole della funzione SQL
@@ -218,6 +219,7 @@ export class LocalApi implements LoyaltyApi {
     const me = this.user();
     return { counters: this.s.counters[me.id] ?? {}, goals: await this.listGoals(), rewards: (this.s.rewards[me.id] ?? []).slice().reverse() };
   }
+  async listPromotions(): Promise<Promotion[]> { return activePromotions(this.s.lots); }
   async redeemReward(id: string) {
     const r = (this.s.rewards[this.user().id] ?? []).find((x) => x.id === id);
     if (r && !r.redeemedAt) r.redeemedAt = new Date().toISOString();

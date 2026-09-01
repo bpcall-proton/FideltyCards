@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Bell, LogOut, Ticket, ListOrdered, PlusCircle, QrCode, Trophy, Target } from "lucide-react";
+import { Bell, LogOut, Ticket, ListOrdered, PlusCircle, QrCode, CreditCard, Tag, Trophy, Target } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button, Select } from "./ui";
@@ -13,7 +13,9 @@ const adminNav: { to: string; label: I18nKey; icon: typeof Bell }[] = [
   { to: "/admin/notifications", label: "navNotifications", icon: Bell },
 ];
 const studentNav: typeof adminNav = [
+  { to: "/card", label: "navCard", icon: CreditCard },
   { to: "/redeem", label: "navRedeem", icon: QrCode },
+  { to: "/promotions", label: "navPromos", icon: Tag },
   { to: "/me", label: "navMe", icon: Trophy },
 ];
 

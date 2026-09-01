@@ -98,6 +98,16 @@ export interface UnlockedReward {
   redeemedAt?: string;
 }
 
+export interface Promotion {
+  id: string;
+  name: string;
+  valueType: ValueType;
+  valueAmount: number;
+  productKey?: string;
+  validFrom?: string;
+  expiresAt?: string;
+}
+
 export interface StudentStatus {
   counters: Record<string, number>;
   goals: Goal[];
@@ -164,6 +174,7 @@ export interface LoyaltyApi {
 
   redeemCode(code: string, deviceId?: string): Promise<RedeemResult>;
   myStatus(): Promise<StudentStatus>;
+  listPromotions(): Promise<Promotion[]>;
   redeemReward(id: string): Promise<void>;
 }
 

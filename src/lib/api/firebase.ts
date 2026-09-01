@@ -9,8 +9,9 @@ import {
 } from "firebase/firestore";
 import { getFunctions, httpsCallable, type Functions } from "firebase/functions";
 import type {
-  AdminNotification, Code, GenerateLotInput, Goal, Lot, LoyaltyApi, RedeemResult, StudentStatus, Transaction, User,
+  AdminNotification, Code, GenerateLotInput, Goal, Lot, LoyaltyApi, Promotion, RedeemResult, StudentStatus, Transaction, User,
 } from "../types";
+import { activePromotions } from "../promotions";
 
 const iso = (v: unknown): string | undefined =>
   v instanceof Timestamp ? v.toDate().toISOString() : typeof v === "string" ? v : undefined;
@@ -83,7 +84,13 @@ export class FirebaseApi implements LoyaltyApi {
   async signUp(email: string, password: string, fullName: string): Promise<User> {
     const { user } = await createUserWithEmailAndPassword(this.auth, email, password);
     await updateProfile(user, { displayName: fullName });
-    await setDoc(doc(this.db, "profiles", user.uid), { fullName, role: "student", level: 1, createdAt: Timestamp.now() });
+    const ref = doc(this.db, "profiles", user.uid);
+    const existing = await getDoc(ref);
+    if (existing.exists()) {
+      await setDoc(ref, { fullName }, { merge: true });
+    } else {
+      await setDoc(ref, { fullName, role: "student", level: 1, createdAt: Timestamp.now() });
+    }
     return this.profile(user);
   }
 
@@ -189,6 +196,11 @@ export class FirebaseApi implements LoyaltyApi {
         return { id: d.id, reward: r.reward, unlockedAt: iso(r.unlockedAt) ?? "", redeemedAt: iso(r.redeemedAt) };
       }),
     };
+  }
+
+  async listPromotions(): Promise<Promotion[]> {
+    const snap = await getDocs(query(collection(this.db, "lots"), where("status", "==", "ACTIVE")));
+    return activePromotions(snap.docs.map((d) => ({ id: d.id, ...mapLot({ id: d.id, ...d.data() }) })));
   }
 
   async redeemReward(id: string) { await this.call<{ rewardId: string }, unknown>("redeemReward")({ rewardId: id }); }
