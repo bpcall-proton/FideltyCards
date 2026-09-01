@@ -50,6 +50,7 @@ export class FirebaseApi implements LoyaltyApi {
   private db: Firestore;
   private fns: Functions;
   private ready: Promise<void>;
+  private role: User["role"] = "student";
 
   constructor(options: FirebaseOptions, region = "europe-west1") {
     const app = initializeApp(options);
@@ -68,7 +69,8 @@ export class FirebaseApi implements LoyaltyApi {
   private async profile(u: FbUser): Promise<User> {
     const snap = await getDoc(doc(this.db, "profiles", u.uid));
     const d = snap.data();
-    return { id: u.uid, name: d?.fullName ?? u.displayName ?? u.email ?? "", role: d?.role ?? "student", level: d?.level ?? 1 };
+    this.role = d?.role ?? "student";
+    return { id: u.uid, name: d?.fullName ?? u.displayName ?? u.email ?? "", role: this.role, level: d?.level ?? 1 };
   }
 
   async currentUser(): Promise<User | null> {
@@ -134,9 +136,12 @@ export class FirebaseApi implements LoyaltyApi {
 
   async listTransactions(lotId?: string): Promise<Transaction[]> {
     const col = collection(this.db, "transactions");
+    const uid = this.auth.currentUser?.uid;
     const q = lotId
       ? query(col, where("lotId", "==", lotId), orderBy("createdAt", "desc"), limit(500))
-      : query(col, orderBy("createdAt", "desc"), limit(500));
+      : this.role !== "admin" && uid
+        ? query(col, where("studentId", "==", uid), orderBy("createdAt", "desc"), limit(500))
+        : query(col, orderBy("createdAt", "desc"), limit(500));
     const snap = await getDocs(q);
     return snap.docs.map((d) => {
       const r = d.data();

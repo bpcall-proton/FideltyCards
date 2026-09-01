@@ -27,7 +27,10 @@ export function StudentProvider({ children }: { children: ReactNode }) {
 
   const reload = useCallback(async () => {
     if (!user || user.role !== "student") { setStatus(null); return; }
-    const [s, txs] = await Promise.all([api.myStatus(), api.listTransactions()]);
+    const [s, txs] = await Promise.all([
+      api.myStatus().catch((e: unknown) => { console.error(e); return { counters: {}, goals: [], rewards: [] } as StudentStatus; }),
+      api.listTransactions().catch((e: unknown) => { console.error(e); return []; }),
+    ]);
     setStatus(s);
     const today = new Date().toDateString();
     setCodesToday(txs.filter((x) => new Date(x.createdAt).toDateString() === today).length);

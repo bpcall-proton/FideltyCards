@@ -21,7 +21,7 @@ export default function Me() {
 
   const load = async () => {
     await reload();
-    setTxs(await api.listTransactions());
+    setTxs(await api.listTransactions().catch(() => []));
   };
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
