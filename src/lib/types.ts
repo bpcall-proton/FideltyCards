@@ -139,7 +139,7 @@ export interface AdminNotification {
 }
 
 export interface LoyaltyApi {
-  readonly mode: "supabase" | "demo";
+  readonly mode: "firebase" | "demo";
   currentUser(): Promise<User | null>;
   signIn(email: string, password: string): Promise<User>;
   signUp(email: string, password: string, fullName: string): Promise<User>;

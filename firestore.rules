@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Profilo: lo studente crea/aggiorna il proprio ma non può cambiare ruolo o livello.
+    match /profiles/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.role == 'student' && request.resource.data.level == 1;
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == uid
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.level == resource.data.level);
+    }
+
+    // Lotti, codici, transazioni, notifiche: SOLO admin in lettura, MAI scrittura dal client
+    // (tutte le scritture passano dalle Cloud Functions con Admin SDK).
+    match /lots/{id}          { allow read: if isAdmin(); allow write: if false; }
+    match /codes/{id}         { allow read: if isAdmin(); allow write: if false; }
+    match /transactions/{id}  { allow read: if isAdmin() || (signedIn() && resource.data.studentId == request.auth.uid); allow write: if false; }
+    match /notifications/{id} { allow read: if isAdmin(); allow update: if isAdmin(); allow create, delete: if false; }
+    match /meta/{id}          { allow read, write: if false; }
+
+    // Obiettivi: tutti li leggono, solo admin li gestisce.
+    match /goals/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+
+    // Contatori e premi: lo studente legge i propri; nessuna scrittura dal client.
+    match /counters/{uid} { allow read: if signedIn() && (request.auth.uid == uid || isAdmin()); allow write: if false; }
+    match /rewards/{id}   { allow read: if signedIn() && (resource.data.studentId == request.auth.uid || isAdmin()); allow write: if false; }
+  }
+}

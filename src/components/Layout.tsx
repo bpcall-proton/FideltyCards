@@ -59,7 +59,7 @@ export default function Layout() {
                 ))}
               </Select>
             )}
-            {api.mode === "supabase" && user && (
+            {api.mode === "firebase" && user && (
               <>
                 <span className="hidden sm:inline text-xs opacity-80">{user.name}</span>
                 <Button variant="ghost" size="sm" onClick={signOut} className="text-sidebar-foreground">
@@ -82,7 +82,7 @@ export default function Layout() {
       </main>
       {api.mode === "demo" && (
         <footer className="text-center text-xs text-muted-foreground py-3">
-          Modalità demo (dati nel browser). Imposta VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY per usare il backend reale.
+          Modalità demo (dati nel browser). Imposta VITE_FIREBASE_API_KEY e VITE_FIREBASE_PROJECT_ID per usare Firebase.
         </footer>
       )}
     </div>

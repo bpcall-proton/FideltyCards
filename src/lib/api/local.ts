@@ -6,7 +6,7 @@ import type {
 
 /**
  * Backend demo in localStorage: replica le stesse regole della funzione SQL
- * `redeem_code`. Serve solo per provare l'app senza Supabase configurato.
+ * `redeemCode`. Serve solo per provare l'app senza Firebase configurato.
  */
 
 type LotRow = Omit<Lot, "usedCount" | "availableCount" | "expiredCount" | "cancelledCount" | "usagePercent">;
