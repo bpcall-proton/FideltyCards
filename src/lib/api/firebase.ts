@@ -9,8 +9,9 @@ import {
 } from "firebase/firestore";
 import { getFunctions, httpsCallable, type Functions } from "firebase/functions";
 import type {
-  AdminNotification, Code, GenerateLotInput, Goal, Lot, LoyaltyApi, RedeemResult, StudentStatus, Transaction, User,
+  AdminNotification, Code, GenerateLotInput, Goal, Lot, LoyaltyApi, Promotion, RedeemResult, StudentStatus, Transaction, User,
 } from "../types";
+import { activePromotions } from "../promotions";
 
 const iso = (v: unknown): string | undefined =>
   v instanceof Timestamp ? v.toDate().toISOString() : typeof v === "string" ? v : undefined;
@@ -49,6 +50,7 @@ export class FirebaseApi implements LoyaltyApi {
   private db: Firestore;
   private fns: Functions;
   private ready: Promise<void>;
+  private role: User["role"] = "student";
 
   constructor(options: FirebaseOptions, region = "europe-west1") {
     const app = initializeApp(options);
@@ -67,7 +69,8 @@ export class FirebaseApi implements LoyaltyApi {
   private async profile(u: FbUser): Promise<User> {
     const snap = await getDoc(doc(this.db, "profiles", u.uid));
     const d = snap.data();
-    return { id: u.uid, name: d?.fullName ?? u.displayName ?? u.email ?? "", role: d?.role ?? "student", level: d?.level ?? 1 };
+    this.role = d?.role ?? "student";
+    return { id: u.uid, name: d?.fullName ?? u.displayName ?? u.email ?? "", role: this.role, level: d?.level ?? 1, email: u.email ?? undefined };
   }
 
   async currentUser(): Promise<User | null> {
@@ -83,12 +86,26 @@ export class FirebaseApi implements LoyaltyApi {
   async signUp(email: string, password: string, fullName: string): Promise<User> {
     const { user } = await createUserWithEmailAndPassword(this.auth, email, password);
     await updateProfile(user, { displayName: fullName });
-    await setDoc(doc(this.db, "profiles", user.uid), { fullName, role: "student", level: 1, createdAt: Timestamp.now() });
+    const ref = doc(this.db, "profiles", user.uid);
+    const existing = await getDoc(ref);
+    if (existing.exists()) {
+      await setDoc(ref, { fullName }, { merge: true });
+    } else {
+      await setDoc(ref, { fullName, role: "student", level: 1, createdAt: Timestamp.now() });
+    }
     return this.profile(user);
   }
 
   async signOut(): Promise<void> {
     await signOut(this.auth);
+  }
+
+  async updateName(fullName: string): Promise<User> {
+    const u = this.auth.currentUser;
+    if (!u) throw new Error("NOT_AUTHENTICATED");
+    await updateProfile(u, { displayName: fullName });
+    await setDoc(doc(this.db, "profiles", u.uid), { fullName }, { merge: true });
+    return this.profile(u);
   }
 
   async generateLot(i: GenerateLotInput): Promise<Lot> {
@@ -127,9 +144,12 @@ export class FirebaseApi implements LoyaltyApi {
 
   async listTransactions(lotId?: string): Promise<Transaction[]> {
     const col = collection(this.db, "transactions");
+    const uid = this.auth.currentUser?.uid;
     const q = lotId
       ? query(col, where("lotId", "==", lotId), orderBy("createdAt", "desc"), limit(500))
-      : query(col, orderBy("createdAt", "desc"), limit(500));
+      : this.role !== "admin" && uid
+        ? query(col, where("studentId", "==", uid), orderBy("createdAt", "desc"), limit(500))
+        : query(col, orderBy("createdAt", "desc"), limit(500));
     const snap = await getDocs(q);
     return snap.docs.map((d) => {
       const r = d.data();
@@ -189,6 +209,11 @@ export class FirebaseApi implements LoyaltyApi {
         return { id: d.id, reward: r.reward, unlockedAt: iso(r.unlockedAt) ?? "", redeemedAt: iso(r.redeemedAt) };
       }),
     };
+  }
+
+  async listPromotions(): Promise<Promotion[]> {
+    const snap = await getDocs(query(collection(this.db, "lots"), where("status", "==", "ACTIVE")));
+    return activePromotions(snap.docs.map((d) => ({ id: d.id, ...mapLot({ id: d.id, ...d.data() }) })));
   }
 
   async redeemReward(id: string) { await this.call<{ rewardId: string }, unknown>("redeemReward")({ rewardId: id }); }

@@ -11,6 +11,7 @@ export interface User {
   name: string;
   role: Role;
   level: number;
+  email?: string;
 }
 
 export interface GenerateLotInput {
@@ -98,6 +99,16 @@ export interface UnlockedReward {
   redeemedAt?: string;
 }
 
+export interface Promotion {
+  id: string;
+  name: string;
+  valueType: ValueType;
+  valueAmount: number;
+  productKey?: string;
+  validFrom?: string;
+  expiresAt?: string;
+}
+
 export interface StudentStatus {
   counters: Record<string, number>;
   goals: Goal[];
@@ -146,6 +157,7 @@ export interface LoyaltyApi {
   signIn(email: string, password: string): Promise<User>;
   signUp(email: string, password: string, fullName: string): Promise<User>;
   signOut(): Promise<void>;
+  updateName(fullName: string): Promise<User>;
   demoUsers?(): User[];
   switchDemoUser?(id: string): Promise<User>;
 
@@ -164,6 +176,7 @@ export interface LoyaltyApi {
 
   redeemCode(code: string, deviceId?: string): Promise<RedeemResult>;
   myStatus(): Promise<StudentStatus>;
+  listPromotions(): Promise<Promotion[]>;
   redeemReward(id: string): Promise<void>;
 }
 

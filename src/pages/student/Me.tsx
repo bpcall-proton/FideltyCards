@@ -1,65 +1,168 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Gift, Star } from "lucide-react";
+import { Check, Coffee, CreditCard, Gift, PartyPopper, QrCode, Star, Ticket, TrendingUp } from "lucide-react";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
-import type { StudentStatus, Transaction } from "@/lib/types";
+import { DAILY_CODES_LIMIT, levelName, useStudent } from "@/lib/student";
+import type { Transaction } from "@/lib/types";
+import { useAuth } from "@/lib/auth";
 import { fmtDateTime, fmtInt } from "@/lib/utils";
-import { Badge, Button, buttonVariants, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
-import { GoalProgress } from "./Redeem";
+import { Badge, Button, buttonVariants, Card, CardContent, CardHeader, CardTitle, Modal, Progress } from "@/components/ui";
+
+const HERO_IMG =
+  "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1400&q=70";
 
 export default function Me() {
   const { t } = useI18n();
-  const [status, setStatus] = useState<StudentStatus | null>(null);
+  const { user } = useAuth();
+  const { status, codesToday, reload } = useStudent();
   const [txs, setTxs] = useState<Transaction[]>([]);
+  const [popup, setPopup] = useState(false);
 
   const load = async () => {
-    const [s, t] = await Promise.all([api.myStatus(), api.listTransactions()]);
-    setStatus(s); setTxs(t);
+    await reload();
+    setTxs(await api.listTransactions().catch(() => []));
   };
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!status) return;
+    const pendingIds = status.rewards.filter((r) => !r.redeemedAt).map((r) => r.id).join(",");
+    if (pendingIds && sessionStorage.getItem("fidelty-reward-popup") !== pendingIds) {
+      sessionStorage.setItem("fidelty-reward-popup", pendingIds);
+      setPopup(true);
+    }
+  }, [status]);
 
   if (!status) return <p className="text-muted-foreground">{t("loading")}</p>;
 
   const points = status.counters.points ?? 0;
-  const counters = Object.entries(status.counters).filter(([k]) => k !== "points" && !k.startsWith("promo:"));
+  const counterEntries = Object.entries(status.counters).filter(([k]) => k !== "points" && !k.startsWith("promo:"));
+  const counters = counterEntries.length > 0 ? counterEntries : [[t("defCoffee"), 0] as [string, number]];
   const pending = status.rewards.filter((r) => !r.redeemedAt);
   const goalsFor = (k: string) => status.goals.filter((g) => g.counterKey === k).sort((a, b) => a.target - b.target);
+  const pointGoals = goalsFor("points");
+  const goal = pointGoals[0] ?? { target: 300, reward: t("defReward") };
+  const nextGoal = goal;
+  const cycles = Math.floor(points / goal.target);
+  const cyclePoints = points % goal.target;
+  const missing = goal.target - cyclePoints;
+  const level = user?.level ?? 1;
+  const STAMPS = 10;
+  const perStamp = Math.max(1, Math.ceil(goal.target / STAMPS));
+  const stamped = Math.min(STAMPS, Math.floor(cyclePoints / perStamp));
+
+  const panel = "rounded-3xl bg-white border border-[#eee3d8] p-6 shadow-sm space-y-4";
+  const pill = "inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-3 py-1 text-xs font-bold";
 
   return (
-    <div className="max-w-md mx-auto space-y-4">
-      <Card className="bg-sidebar text-sidebar-foreground">
-        <CardContent className="pt-6 text-center space-y-2">
-          <div className="text-sm opacity-80">{t("meYourPoints")}</div>
-          <div className="text-5xl font-black flex items-center justify-center gap-2"><Star className="h-9 w-9 text-amber-400 fill-amber-400" /> {fmtInt(points)}</div>
-          {goalsFor("points")[0] && (
-            <div className="text-left pt-2 [&_*]:text-sidebar-foreground">
-              <GoalProgress value={points} target={goalsFor("points")[0].target} reward={goalsFor("points")[0].reward} unit={t("unitPoints")} />
-            </div>
-          )}
-          <Link to="/redeem" className={buttonVariants({ size: "lg", className: "w-full mt-2" })}>{t("meEnterCode")}</Link>
-        </CardContent>
-      </Card>
+    <div className="space-y-6">
+      <Modal open={popup} onClose={() => setPopup(false)}>
+        <div className="text-center space-y-3">
+          <PartyPopper className="h-14 w-14 text-primary mx-auto" />
+          <h2 className="text-xl font-black">{t("rwTitle")}</h2>
+          {pending.map((r) => <div key={r.id} className="rounded-lg bg-primary/10 p-3 text-lg font-bold">🎁 {r.reward}</div>)}
+          <p className="text-sm text-muted-foreground">{t("rwBody")}</p>
+          <Button variant="outline" className="w-full" onClick={() => setPopup(false)}>{t("rwLater")}</Button>
+        </div>
+      </Modal>
 
+      <section className="relative overflow-hidden rounded-3xl shadow-xl text-white">
+        <img src={HERO_IMG} alt="" className="absolute inset-0 h-full w-full object-cover" loading="eager" />
+        <div className="absolute inset-0 bg-[#4a2c17]/70" />
+        <div className="relative p-7 md:p-9 space-y-4">
+          <div className="text-xs font-black tracking-[0.3em] text-amber-200">{t("meMyBalance")}</div>
+          <h1 className="text-2xl font-bold">{t("meHello", { n: user?.name.split(" ")[0] ?? "" })}</h1>
+          <div className="flex items-end gap-3">
+            <span className="text-7xl font-black leading-none">{fmtInt(points)}</span>
+            <span className="text-2xl font-black text-amber-100 pb-2">{t("ptsUnit")}</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className={pill}><Star className="h-3.5 w-3.5" /> {t("lvlLabel", { l: levelName(level) })}</span>
+            <span className={pill}><Ticket className="h-3.5 w-3.5" /> {t("meCodesToday", { n: codesToday, m: DAILY_CODES_LIMIT })}</span>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Link to="/redeem" className={buttonVariants({ size: "lg", className: "font-bold px-8" })}><Ticket className="h-5 w-5 mr-2" /> {t("meEnterOne")}</Link>
+            <Link to="/card" className={buttonVariants({ size: "lg", variant: "secondary", className: "font-bold" })}><QrCode className="h-5 w-5" /></Link>
+          </div>
+        </div>
+      </section>
+
+      <section className={panel}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 font-black"><TrendingUp className="h-4 w-4 text-primary" /> {t("meNextReward")}</div>
+          <div className="text-sm font-semibold text-[#7a6a5c]">{nextGoal.reward}</div>
+        </div>
+        <div className="text-3xl font-black">{fmtInt(cyclePoints)}<span className="text-[#b8a898]"> / {fmtInt(nextGoal.target)}</span></div>
+        <Progress value={(100 * cyclePoints) / nextGoal.target} className="h-3 bg-[#fde8d3]" />
+        <div className="text-sm font-semibold text-primary">
+          {t("missing", { n: fmtInt(missing), u: t("unitPoints") })}{cycles > 0 && <span className="text-[#9a8a7c]"> · {t("stampCycle", { n: cycles })}</span>}
+        </div>
+      </section>
+
+      <section className={panel}>
+        <div className="flex items-center gap-2 font-black"><CreditCard className="h-4 w-4 text-primary" /> {t("stampTitle")}</div>
+        <div className="rounded-2xl bg-gradient-to-br from-[#f97316] to-[#c2410c] p-5 text-white shadow-inner space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="font-black tracking-wide">{t("appName")}</div>
+            <div className="text-sm font-semibold">{user?.name}</div>
+          </div>
+          <div className="grid grid-cols-5 gap-2.5">
+            {Array.from({ length: STAMPS }).map((_, i) => (
+              <div key={i} className={`aspect-square rounded-xl grid place-items-center border-2 transition ${i < stamped ? "bg-white text-primary border-white shadow" : "border-dashed border-white/50 text-white/40"}`}>
+                {i < stamped ? <Check className="h-6 w-6 stroke-[3]" /> : <Coffee className="h-5 w-5" />}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between text-xs font-semibold opacity-90">
+            <span>{stamped} / {STAMPS}</span>
+            <span>🎁 {nextGoal.reward}</span>
+          </div>
+        </div>
+        <div className="text-sm text-[#7a6a5c]">{t("stampHint", { n: fmtInt(perStamp), r: nextGoal.reward })}</div>
+      </section>
+
+      <div className="grid gap-6 md:grid-cols-2">
       {counters.map(([k, v]) => {
-        const g = goalsFor(k)[0];
+        const g = goalsFor(k)[0] ?? { target: 5, reward: t("defReward") };
+        const inCycle = v % g.target === 0 && v > 0 ? g.target : v % g.target;
         return (
-          <Card key={k}>
-            <CardHeader className="pb-2"><CardTitle className="text-base">{t("meConsumed", { p: k })}</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <div className="text-3xl font-bold">{g ? `${fmtInt(v % g.target === 0 && v > 0 ? g.target : v % g.target)} / ${g.target}` : fmtInt(v)}</div>
-              {g && <GoalProgress value={v} target={g.target} reward={g.reward} unit={k.toLowerCase()} />}
-            </CardContent>
-          </Card>
+          <section key={k} className={panel}>
+            <div className="flex items-center gap-2 font-black"><Coffee className="h-4 w-4 text-primary" /> {k}</div>
+            <div className="text-3xl font-black">{fmtInt(inCycle)}<span className="text-[#b8a898]">/{g.target}</span></div>
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(g.target, 5)}, minmax(0, 1fr))` }}>
+              {Array.from({ length: g.target }).map((_, i) => (
+                <div key={i} className={`h-11 rounded-xl grid place-items-center border-2 ${i < inCycle ? "bg-primary border-primary text-white shadow" : "border-dashed border-[#e3d5c6] bg-[#fbf7f2]"}`}>
+                  {i < inCycle && <Check className="h-5 w-5 stroke-[3]" />}
+                </div>
+              ))}
+            </div>
+            <div className="text-sm text-[#7a6a5c] font-semibold">
+              {inCycle < g.target ? t("meStampMissing", { n: g.target - inCycle, p: k.toLowerCase(), r: g.reward }) : `🎁 ${g.reward}`}
+            </div>
+          </section>
         );
       })}
+      </div>
 
-      <Card>
+      <section className={panel}>
+        <div className="flex items-center gap-2 font-black"><Coffee className="h-4 w-4 text-primary" /> {t("howTitle")}</div>
+        <ol className="grid gap-3 md:grid-cols-2">
+          {(["how1", "how2", "how3", "how4"] as const).map((k, i) => (
+            <li key={k} className="flex gap-3 rounded-2xl bg-[#fbf7f2] p-4">
+              <div className="h-8 w-8 shrink-0 rounded-full bg-[#fde8d3] text-primary font-black grid place-items-center text-sm">{i + 1}</div>
+              <p className="text-sm text-[#5b4b3e] leading-snug">{t(k)}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <Card className="rounded-3xl border-[#eee3d8] shadow-sm">
         <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Gift className="h-5 w-5 text-primary" /> {t("meRewards")}</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {status.rewards.length === 0 && <p className="text-sm text-muted-foreground">{t("meNoRewards")}</p>}
           {pending.map((r) => (
-            <div key={r.id} className="flex items-center justify-between rounded-lg border border-primary bg-primary/5 p-3">
+            <div key={r.id} className="flex items-center justify-between rounded-2xl border border-primary bg-primary/5 p-3">
               <div>
                 <div className="font-bold">🎁 {r.reward}</div>
                 <div className="text-xs text-muted-foreground">{t("meUnlockedOn", { d: fmtDateTime(r.unlockedAt) })}</div>
@@ -68,7 +171,7 @@ export default function Me() {
             </div>
           ))}
           {status.rewards.filter((r) => r.redeemedAt).map((r) => (
-            <div key={r.id} className="flex items-center justify-between rounded-lg border p-3 opacity-70">
+            <div key={r.id} className="flex items-center justify-between rounded-2xl border p-3 opacity-70">
               <div className="text-sm">{r.reward}</div>
               <Badge variant="secondary">{t("meRedeemedOn", { d: fmtDateTime(r.redeemedAt) })}</Badge>
             </div>
@@ -76,7 +179,7 @@ export default function Me() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-3xl border-[#eee3d8] shadow-sm">
         <CardHeader className="pb-2"><CardTitle className="text-base">{t("meHistory")}</CardTitle></CardHeader>
         <CardContent className="divide-y text-sm">
           {txs.length === 0 && <p className="text-muted-foreground">{t("meNoHistory")}</p>}
