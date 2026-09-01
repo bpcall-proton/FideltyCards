@@ -24,7 +24,7 @@ export default function Generate() {
   const [alnum, setAlnum] = useState(false);
   const [withNumeric, setWithNumeric] = useState(true);
   const [withQr, setWithQr] = useState(true);
-  const [codeLength, setCodeLength] = useState(6);
+  const [codeLength, setCodeLength] = useState(8);
   const [expiryMode, setExpiryMode] = useState<"none" | "date" | "range">("none");
   const [validFrom, setValidFrom] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
