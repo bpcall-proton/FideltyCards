@@ -3,11 +3,11 @@ import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import * as XLSX from "xlsx";
 import { qrPayloadFor } from "./codegen";
-import { describeValue, type Code, type Lot } from "./types";
+import { codeStatusLabel, describeValue, type Code, type Lot } from "./types";
+import { locale, t } from "./i18n";
 
-const STATUS_IT: Record<Code["status"], string> = {
-  ACTIVE: "Disponibile", USED: "Utilizzato", EXPIRED: "Scaduto", CANCELLED: "Annullato",
-};
+const header = () => [t("thCode"), t("thValue"), t("thStatus"), t("thUsedAt")];
+const file = (lot: Lot, suffix = "") => `${t("exLotPrefix")}-${lot.lotNumber}${suffix}`;
 
 function download(blob: Blob, filename: string) {
   const a = document.createElement("a");
@@ -19,44 +19,44 @@ function download(blob: Blob, filename: string) {
 
 function rows(lot: Lot, codes: Code[]) {
   const value = describeValue(lot);
-  return codes.map((c) => [c.code, value, STATUS_IT[c.status], c.usedAt ? new Date(c.usedAt).toLocaleString("it-IT") : ""]);
+  return codes.map((c) => [c.code, value, codeStatusLabel(c.status), c.usedAt ? new Date(c.usedAt).toLocaleString(locale()) : ""]);
 }
 
 export function exportCsv(lot: Lot, codes: Code[]) {
-  const lines = [["Codice", "Valore", "Stato", "Utilizzato il"], ...rows(lot, codes)]
+  const lines = [header(), ...rows(lot, codes)]
     .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(";"));
-  download(new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" }), `lotto-${lot.lotNumber}.csv`);
+  download(new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" }), `${file(lot)}.csv`);
 }
 
 export function exportExcel(lot: Lot, codes: Code[]) {
-  const ws = XLSX.utils.aoa_to_sheet([["Codice", "Valore", "Stato", "Utilizzato il"], ...rows(lot, codes)]);
+  const ws = XLSX.utils.aoa_to_sheet([header(), ...rows(lot, codes)]);
   ws["!cols"] = [{ wch: 14 }, { wch: 28 }, { wch: 14 }, { wch: 20 }];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, `Lotto ${lot.lotNumber}`);
+  XLSX.utils.book_append_sheet(wb, ws, `${t("genLot")} ${lot.lotNumber}`);
   const info = XLSX.utils.aoa_to_sheet([
-    ["Lotto", lot.lotNumber], ["Nome", lot.name], ["Valore", describeValue(lot)], ["Codici", lot.totalCodes],
-    ["Utilizzati", lot.usedCount], ["Disponibili", lot.availableCount], ["Scaduti", lot.expiredCount],
-    ["Percentuale utilizzo", `${lot.usagePercent}%`], ["Scadenza", lot.expiresAt ? new Date(lot.expiresAt).toLocaleDateString("it-IT") : "Nessuna"],
+    [t("genLot"), lot.lotNumber], [t("exName"), lot.name], [t("thValue"), describeValue(lot)], [t("statCodes"), lot.totalCodes],
+    [t("statUsed"), lot.usedCount], [t("statAvailable"), lot.availableCount], [t("statExpired"), lot.expiredCount],
+    [t("exUsagePercent"), `${lot.usagePercent}%`], [t("genExpiry"), lot.expiresAt ? new Date(lot.expiresAt).toLocaleDateString(locale()) : t("exExpiryNone")],
   ]);
-  XLSX.utils.book_append_sheet(wb, info, "Riepilogo");
-  XLSX.writeFile(wb, `lotto-${lot.lotNumber}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, info, t("exSummary"));
+  XLSX.writeFile(wb, `${file(lot)}.xlsx`);
 }
 
 /** Tabella stampabile dei codici numerici/alfanumerici. */
 export function exportPdfTable(lot: Lot, codes: Code[]) {
   const doc = new jsPDF();
   doc.setFontSize(14);
-  doc.text(`LOTTO #${lot.lotNumber} — ${lot.name}`, 14, 16);
+  doc.text(`${t("LOT")} #${lot.lotNumber} — ${lot.name}`, 14, 16);
   doc.setFontSize(10);
-  doc.text(`Valore: ${describeValue(lot)}   Codici: ${lot.totalCodes}   Scadenza: ${lot.expiresAt ? new Date(lot.expiresAt).toLocaleDateString("it-IT") : "nessuna"}`, 14, 23);
+  doc.text(`${t("thValue")}: ${describeValue(lot)}   ${t("statCodes")}: ${lot.totalCodes}   ${t("genExpiry")}: ${lot.expiresAt ? new Date(lot.expiresAt).toLocaleDateString(locale()) : t("none")}`, 14, 23);
   autoTable(doc, {
     startY: 28,
-    head: [["Codice", "Valore", "Stato"]],
-    body: codes.map((c) => [c.code, describeValue(lot), STATUS_IT[c.status]]),
+    head: [[t("thCode"), t("thValue"), t("thStatus")]],
+    body: codes.map((c) => [c.code, describeValue(lot), codeStatusLabel(c.status)]),
     styles: { font: "courier", fontSize: 10 },
     headStyles: { fillColor: [30, 41, 59] },
   });
-  doc.save(`lotto-${lot.lotNumber}-tabella.pdf`);
+  doc.save(`${file(lot, "-table")}.pdf`);
 }
 
 /** PDF pronto per la stampa: griglia di QR (con codice leggibile sotto) da ritagliare. */
@@ -71,7 +71,7 @@ export async function exportPdfQr(lot: Lot, codes: Code[], onProgress?: (done: n
     if (idx === 0) {
       doc.setFontSize(8);
       doc.setTextColor(120);
-      doc.text(`Lotto #${lot.lotNumber} · ${lot.name} · ${describeValue(lot)}`, margin, 10);
+      doc.text(`${t("genLot")} #${lot.lotNumber} · ${lot.name} · ${describeValue(lot)}`, margin, 10);
       doc.setTextColor(0);
     }
     const x = margin + (idx % cols) * cell;
@@ -94,5 +94,5 @@ export async function exportPdfQr(lot: Lot, codes: Code[], onProgress?: (done: n
       await new Promise((r) => setTimeout(r));
     }
   }
-  doc.save(`lotto-${lot.lotNumber}-qr.pdf`);
+  doc.save(`${file(lot, "-qr")}.pdf`);
 }

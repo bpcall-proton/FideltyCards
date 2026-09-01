@@ -1,13 +1,14 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { locale } from "./i18n";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export const fmtInt = (n: number) => n.toLocaleString("it-IT");
-export const fmtDate = (s?: string) => (s ? new Date(s).toLocaleDateString("it-IT") : "—");
-export const fmtDateTime = (s?: string) => (s ? new Date(s).toLocaleString("it-IT") : "—");
+export const fmtInt = (n: number) => n.toLocaleString(locale());
+export const fmtDate = (s?: string) => (s ? new Date(s).toLocaleDateString(locale()) : "—");
+export const fmtDateTime = (s?: string) => (s ? new Date(s).toLocaleString(locale()) : "—");
 
 export function deviceId(): string {
   const k = "fidelty-device-id";

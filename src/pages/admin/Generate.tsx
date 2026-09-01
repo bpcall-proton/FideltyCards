@@ -2,8 +2,9 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Download, FileSpreadsheet, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import { exportExcel, exportPdfQr, exportPdfTable } from "@/lib/export";
-import { describeValue, type CodeFormat, type GenerateLotInput, type Lot, type ValueType, VALUE_TYPE_LABELS } from "@/lib/types";
+import { describeValue, type CodeFormat, type GenerateLotInput, type Lot, type ValueType, valueTypeLabel } from "@/lib/types";
 import { fmtInt } from "@/lib/utils";
 import { Button, buttonVariants, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Select } from "@/components/ui";
 
@@ -12,6 +13,7 @@ const PRESET_POINTS = [5, 10, 20, 50, 100];
 const PRESET_QTY_VALUE = [1, 2, 5];
 
 export default function Generate() {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [valueType, setValueType] = useState<ValueType>("points");
   const [valueAmount, setValueAmount] = useState(10);
@@ -44,10 +46,10 @@ export default function Generate() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!name.trim()) return setError("Inserisci il nome del lotto.");
-    if (!withNumeric && !withQr) return setError("Scegli almeno un formato.");
-    if (isQtyType && !productKey.trim()) return setError("Indica il prodotto (es. CAFFÈ).");
-    if (quantity < 1) return setError("Quantità non valida.");
+    if (!name.trim()) return setError(t("genErrName"));
+    if (!withNumeric && !withQr) return setError(t("genErrFormat"));
+    if (isQtyType && !productKey.trim()) return setError(t("genErrProduct"));
+    if (quantity < 1) return setError(t("genErrQty"));
     const input: GenerateLotInput = {
       name: name.trim(),
       valueType,
@@ -76,12 +78,12 @@ export default function Generate() {
 
   async function dl(kind: "pdf" | "excel") {
     if (!result) return;
-    setProgress("Preparazione file…");
+    setProgress(t("preparingFile"));
     try {
       const codes = await api.listCodes(result.id);
       if (kind === "excel") exportExcel(result, codes);
       else if (result.codeFormat === "qr" || result.codeFormat === "numeric_qr" || (alnum && withQr))
-        await exportPdfQr(result, codes, (d, t) => setProgress(`QR ${fmtInt(d)} / ${fmtInt(t)}`));
+        await exportPdfQr(result, codes, (d, tot) => setProgress(`QR ${fmtInt(d)} / ${fmtInt(tot)}`));
       else exportPdfTable(result, codes);
     } finally {
       setProgress(null);
@@ -93,17 +95,17 @@ export default function Generate() {
       <Card className="max-w-xl mx-auto text-center">
         <CardContent className="pt-8 space-y-4">
           <CheckCircle2 className="h-14 w-14 text-emerald-600 mx-auto" />
-          <h2 className="text-2xl font-bold">{fmtInt(result.totalCodes)} CODICI GENERATI</h2>
+          <h2 className="text-2xl font-bold">{t("genDone", { n: fmtInt(result.totalCodes) })}</h2>
           <p className="text-muted-foreground">
-            Lotto <b>#{result.lotNumber}</b> · {result.name} · {describeValue(result)}
+            {t("genLot")} <b>#{result.lotNumber}</b> · {result.name} · {describeValue(result)}
           </p>
           {progress && <p className="text-sm text-primary">{progress}</p>}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
-            <Button onClick={() => dl("pdf")} disabled={!!progress}><Download className="h-4 w-4" /> Scarica PDF</Button>
-            <Button variant="secondary" onClick={() => dl("excel")} disabled={!!progress}><FileSpreadsheet className="h-4 w-4" /> Scarica Excel</Button>
-            <Link to={`/admin/lots/${result.id}`} className={buttonVariants({ variant: "outline" })}>Visualizza lotto</Link>
+            <Button onClick={() => dl("pdf")} disabled={!!progress}><Download className="h-4 w-4" /> {t("genDownloadPdf")}</Button>
+            <Button variant="secondary" onClick={() => dl("excel")} disabled={!!progress}><FileSpreadsheet className="h-4 w-4" /> {t("genDownloadExcel")}</Button>
+            <Link to={`/admin/lots/${result.id}`} className={buttonVariants({ variant: "outline" })}>{t("genViewLot")}</Link>
           </div>
-          <Button variant="ghost" onClick={() => setResult(null)}>Genera un altro lotto</Button>
+          <Button variant="ghost" onClick={() => setResult(null)}>{t("genAnother")}</Button>
         </CardContent>
       </Card>
     );
@@ -113,38 +115,38 @@ export default function Generate() {
     <form onSubmit={onSubmit} className="max-w-2xl mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>GENERA NUOVI CODICI</CardTitle>
-          <CardDescription>I codici sono casuali e non prevedibili; il loro valore è deciso solo dal server.</CardDescription>
+          <CardTitle>{t("genTitle")}</CardTitle>
+          <CardDescription>{t("genSubtitle")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <Field label="Nome lotto">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="PROMO CAFFÈ" required />
+          <Field label={t("genLotName")}>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("genLotNamePh")} required />
           </Field>
 
-          <Field label="Tipo">
+          <Field label={t("genType")}>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              {(Object.keys(VALUE_TYPE_LABELS) as ValueType[]).map((t) => (
-                <label key={t} className={`flex items-center gap-2 rounded-md border p-2 text-sm cursor-pointer ${valueType === t ? "border-primary bg-primary/5" : ""}`}>
-                  <input type="radio" name="vt" checked={valueType === t} onChange={() => { setValueType(t); setValueAmount(t === "quantity" || t === "product" ? 1 : 10); }} />
-                  {VALUE_TYPE_LABELS[t]}
+              {(["points", "quantity", "bonus", "product", "promotion"] as ValueType[]).map((vt) => (
+                <label key={vt} className={`flex items-center gap-2 rounded-md border p-2 text-sm cursor-pointer ${valueType === vt ? "border-primary bg-primary/5" : ""}`}>
+                  <input type="radio" name="vt" checked={valueType === vt} onChange={() => { setValueType(vt); setValueAmount(vt === "quantity" || vt === "product" ? 1 : 10); }} />
+                  {valueTypeLabel(vt)}
                 </label>
               ))}
             </div>
           </Field>
 
           {isQtyType && (
-            <Field label="Prodotto" hint="Es. CAFFÈ, COLAZIONE. Il contatore dello studente aumenta per questo prodotto.">
-              <Input value={productKey} onChange={(e) => setProductKey(e.target.value)} placeholder="CAFFÈ" />
+            <Field label={t("genProduct")} hint={t("genProductHint")}>
+              <Input value={productKey} onChange={(e) => setProductKey(e.target.value)} placeholder={t("genProductPh")} />
             </Field>
           )}
           {valueType === "promotion" && (
-            <Field label="ID promozione (opzionale)" hint="Permette di disattivare tutti i lotti di una promozione insieme.">
-              <Input value={promotionId} onChange={(e) => setPromotionId(e.target.value)} placeholder="uuid promozione" />
+            <Field label={t("genPromoId")} hint={t("genPromoIdHint")}>
+              <Input value={promotionId} onChange={(e) => setPromotionId(e.target.value)} placeholder={t("genPromoIdPh")} />
             </Field>
           )}
 
           {valueType !== "promotion" && (
-            <Field label={isQtyType ? "Valore (quantità)" : "Valore (punti)"}>
+            <Field label={isQtyType ? t("genValueQty") : t("genValuePts")}>
               <div className="flex flex-wrap gap-2">
                 {presets.map((p) => (
                   <Button key={p} type="button" size="sm" variant={valueAmount === p ? "default" : "outline"} onClick={() => setValueAmount(p)}>
@@ -156,22 +158,22 @@ export default function Generate() {
             </Field>
           )}
 
-          <Field label="Quantità codici">
+          <Field label={t("genQuantity")}>
             <div className="flex flex-wrap gap-2">
               {PRESET_QTY.map((q) => (
                 <Button key={q} type="button" size="sm" variant={!customQty && quantity === q ? "default" : "outline"} onClick={() => { setCustomQty(false); setQuantity(q); }}>
                   {fmtInt(q)}
                 </Button>
               ))}
-              <Button type="button" size="sm" variant={customQty ? "default" : "outline"} onClick={() => setCustomQty(true)}>Personalizzata</Button>
+              <Button type="button" size="sm" variant={customQty ? "default" : "outline"} onClick={() => setCustomQty(true)}>{t("genCustom")}</Button>
               {customQty && <Input type="number" min={1} max={500000} className="w-32" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />}
             </div>
           </Field>
 
-          <Field label="Scadenza">
+          <Field label={t("genExpiry")}>
             <div className="flex flex-wrap gap-3 text-sm">
-              {([["none", "Nessuna"], ["date", "Data di scadenza"], ["range", "Periodo di validità"]] as const).map(([m, l]) => (
-                <label key={m} className="flex items-center gap-1.5"><input type="radio" checked={expiryMode === m} onChange={() => setExpiryMode(m)} /> {l}</label>
+              {([["none", "genExpNone"], ["date", "genExpDate"], ["range", "genExpRange"]] as const).map(([m, l]) => (
+                <label key={m} className="flex items-center gap-1.5"><input type="radio" checked={expiryMode === m} onChange={() => setExpiryMode(m)} /> {t(l)}</label>
               ))}
             </div>
             {expiryMode !== "none" && (
@@ -182,12 +184,12 @@ export default function Generate() {
             )}
           </Field>
 
-          <Field label="Formato">
+          <Field label={t("genFormat")}>
             <div className="flex flex-wrap gap-4 text-sm">
-              <label className="flex items-center gap-1.5"><input type="checkbox" checked={withNumeric} onChange={(e) => setWithNumeric(e.target.checked)} /> Codice numerico</label>
-              <label className="flex items-center gap-1.5"><input type="checkbox" checked={withQr} onChange={(e) => setWithQr(e.target.checked)} /> QR Code</label>
-              <label className="flex items-center gap-1.5"><input type="checkbox" checked={alnum} onChange={(e) => setAlnum(e.target.checked)} /> Alfanumerico</label>
-              <label className="flex items-center gap-1.5">Lunghezza
+              <label className="flex items-center gap-1.5"><input type="checkbox" checked={withNumeric} onChange={(e) => setWithNumeric(e.target.checked)} /> {t("genFmtNumeric")}</label>
+              <label className="flex items-center gap-1.5"><input type="checkbox" checked={withQr} onChange={(e) => setWithQr(e.target.checked)} /> {t("genFmtQr")}</label>
+              <label className="flex items-center gap-1.5"><input type="checkbox" checked={alnum} onChange={(e) => setAlnum(e.target.checked)} /> {t("genFmtAlnum")}</label>
+              <label className="flex items-center gap-1.5">{t("genLength")}
                 <Select className="h-8 w-20" value={codeLength} onChange={(e) => setCodeLength(Number(e.target.value))}>
                   {[6, 7, 8, 10, 12].map((n) => <option key={n} value={n}>{n}</option>)}
                 </Select>
@@ -196,20 +198,20 @@ export default function Generate() {
           </Field>
 
           <button type="button" className="text-sm text-primary underline" onClick={() => setShowLimits(!showLimits)}>
-            {showLimits ? "Nascondi limiti" : "Limiti avanzati (opzionali)"}
+            {showLimits ? t("genHideLimits") : t("genShowLimits")}
           </button>
           {showLimits && (
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Max codici/giorno per studente"><Input type="number" min={1} value={maxPerDay} onChange={(e) => setMaxPerDay(e.target.value)} /></Field>
-              <Field label="Max punti/giorno per studente"><Input type="number" min={1} value={maxPointsDay} onChange={(e) => setMaxPointsDay(e.target.value)} /></Field>
-              <Field label="Max utilizzi totali lotto"><Input type="number" min={1} value={maxTotal} onChange={(e) => setMaxTotal(e.target.value)} /></Field>
-              <Field label="Livello minimo studente"><Input type="number" min={1} value={minLevel} onChange={(e) => setMinLevel(e.target.value)} /></Field>
+              <Field label={t("genMaxPerDay")}><Input type="number" min={1} value={maxPerDay} onChange={(e) => setMaxPerDay(e.target.value)} /></Field>
+              <Field label={t("genMaxPtsDay")}><Input type="number" min={1} value={maxPointsDay} onChange={(e) => setMaxPointsDay(e.target.value)} /></Field>
+              <Field label={t("genMaxTotal")}><Input type="number" min={1} value={maxTotal} onChange={(e) => setMaxTotal(e.target.value)} /></Field>
+              <Field label={t("genMinLevel")}><Input type="number" min={1} value={minLevel} onChange={(e) => setMinLevel(e.target.value)} /></Field>
             </div>
           )}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" size="lg" className="w-full" disabled={busy}>
-            {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Generazione di {fmtInt(quantity)} codici…</> : "GENERA CODICI"}
+            {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("genGenerating", { n: fmtInt(quantity) })}</> : t("genSubmit")}
           </Button>
         </CardContent>
       </Card>

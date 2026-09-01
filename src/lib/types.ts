@@ -1,3 +1,5 @@
+import { t, type I18nKey } from "./i18n";
+
 export type ValueType = "points" | "quantity" | "bonus" | "product" | "promotion";
 export type CodeFormat = "numeric" | "alphanumeric" | "qr" | "numeric_qr";
 export type CodeStatus = "ACTIVE" | "USED" | "EXPIRED" | "CANCELLED";
@@ -165,45 +167,57 @@ export interface LoyaltyApi {
   redeemReward(id: string): Promise<void>;
 }
 
-export const REDEEM_ERROR_MESSAGES: Record<RedeemError, string> = {
-  NOT_AUTHENTICATED: "Devi effettuare l'accesso.",
-  NOT_FOUND: "CODICE NON VALIDO",
-  ALREADY_USED: "CODICE GIÀ UTILIZZATO",
-  CANCELLED: "CODICE DISATTIVATO",
-  EXPIRED: "CODICE SCADUTO",
-  NOT_YET_VALID: "CODICE NON ANCORA VALIDO",
-  LEVEL_TOO_LOW: "CODICE NON DISPONIBILE PER IL TUO LIVELLO",
-  PROMOTION_EXHAUSTED: "PROMOZIONE ESAURITA",
-  DAILY_LIMIT: "LIMITE GIORNALIERO DI CODICI RAGGIUNTO",
-  DAILY_POINTS_LIMIT: "LIMITE GIORNALIERO DI PUNTI RAGGIUNTO",
+const REDEEM_ERROR_KEYS: Record<RedeemError, I18nKey> = {
+  NOT_AUTHENTICATED: "errNotAuthenticated",
+  NOT_FOUND: "errNotFound",
+  ALREADY_USED: "errAlreadyUsed",
+  CANCELLED: "errCancelled",
+  EXPIRED: "errExpired",
+  NOT_YET_VALID: "errNotYetValid",
+  LEVEL_TOO_LOW: "errLevelTooLow",
+  PROMOTION_EXHAUSTED: "errPromotionExhausted",
+  DAILY_LIMIT: "errDailyLimit",
+  DAILY_POINTS_LIMIT: "errDailyPointsLimit",
 };
+export const redeemErrorMessage = (e: RedeemError) => t(REDEEM_ERROR_KEYS[e]);
 
-export const VALUE_TYPE_LABELS: Record<ValueType, string> = {
-  points: "Punti",
-  quantity: "Quantità prodotto",
-  bonus: "Bonus",
-  product: "Prodotto",
-  promotion: "Promozione",
+const VALUE_TYPE_KEYS: Record<ValueType, I18nKey> = {
+  points: "vtPoints",
+  quantity: "vtQuantity",
+  bonus: "vtBonus",
+  product: "vtProduct",
+  promotion: "vtPromotion",
 };
+export const valueTypeLabel = (v: ValueType) => t(VALUE_TYPE_KEYS[v]);
 
-export const CODE_FORMAT_LABELS: Record<CodeFormat, string> = {
-  numeric: "Solo numerico",
-  alphanumeric: "Alfanumerico",
-  qr: "QR Code",
-  numeric_qr: "Numerico + QR",
+const CODE_FORMAT_KEYS: Record<CodeFormat, I18nKey> = {
+  numeric: "cfNumeric",
+  alphanumeric: "cfAlphanumeric",
+  qr: "cfQr",
+  numeric_qr: "cfNumericQr",
 };
+export const codeFormatLabel = (f: CodeFormat) => t(CODE_FORMAT_KEYS[f]);
+
+const CODE_STATUS_KEYS: Record<CodeStatus, I18nKey> = {
+  ACTIVE: "stActive",
+  USED: "stUsed",
+  EXPIRED: "stExpired",
+  CANCELLED: "stCancelled",
+};
+export const codeStatusLabel = (s: CodeStatus) => t(CODE_STATUS_KEYS[s]);
 
 export function describeValue(l: { valueType: ValueType; valueAmount: number; productKey?: string; name: string }): string {
+  const p = l.productKey ?? l.name;
   switch (l.valueType) {
     case "points":
-      return `+${l.valueAmount} punti`;
+      return t("valPoints", { n: l.valueAmount });
     case "bonus":
-      return `+${l.valueAmount} punti bonus`;
+      return t("valBonus", { n: l.valueAmount });
     case "quantity":
-      return `+${l.valueAmount} ${l.productKey ?? l.name} consumat${l.valueAmount === 1 ? "o" : "i"}`;
+      return t("valQuantity", { n: l.valueAmount, p });
     case "product":
-      return `${l.valueAmount} ${l.productKey ?? l.name}`;
+      return t("valProduct", { n: l.valueAmount, p });
     case "promotion":
-      return `Partecipazione: ${l.name}`;
+      return t("valPromotion", { name: l.name });
   }
 }
