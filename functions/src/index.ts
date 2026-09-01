@@ -73,6 +73,7 @@ interface ProfileDoc {
   level: number;
 }
 
+const STAMPS_KEY = "stamps";
 const VALUE_TYPES: ValueType[] = ["points", "quantity", "bonus", "product", "promotion"];
 const CODE_FORMATS: CodeFormat[] = ["numeric", "alphanumeric", "qr", "numeric_qr"];
 const MAX_QUANTITY = 100_000;
@@ -330,12 +331,18 @@ export const redeemCode = onCall(async (req) => {
       if (todayPts + points > lot.maxPointsPerStudentPerDay) return fail("DAILY_POINTS_LIMIT");
     }
 
-    const goalsSnap = await t.get(db.collection("goals").where("active", "==", true).where("counterKey", "==", counterKey));
+    const goalsCol = db.collection("goals").where("active", "==", true);
+    const [goalsSnap, stampGoalsSnap] = await Promise.all([
+      t.get(goalsCol.where("counterKey", "==", counterKey)),
+      t.get(goalsCol.where("counterKey", "==", STAMPS_KEY)),
+    ]);
     const counterRef = db.doc(`counters/${student}`);
     const counterSnap = await t.get(counterRef);
     const oldVal = Number(counterSnap.data()?.[counterKey] ?? 0);
     const delta = counterKey === "points" ? points : quantity;
     const newVal = oldVal + delta;
+    const oldStamps = Number(counterSnap.data()?.[STAMPS_KEY] ?? 0);
+    const newStamps = oldStamps + 1;
 
     const txId = await nextSeq(t, "tx");
     const txRef = txCol.doc(String(txId).padStart(8, "0"));
@@ -360,12 +367,16 @@ export const redeemCode = onCall(async (req) => {
       status: "OK",
       createdAt: now,
     });
-    t.set(counterRef, { [counterKey]: newVal, updatedAt: now }, { merge: true });
+    t.set(counterRef, { [counterKey]: newVal, [STAMPS_KEY]: newStamps, updatedAt: now }, { merge: true });
 
     const unlocked: { goal: string; reward: string; target: number }[] = [];
-    for (const g of goalsSnap.docs) {
+    const checks = [
+      ...goalsSnap.docs.map((g) => ({ g, oldV: oldVal, newV: newVal })),
+      ...stampGoalsSnap.docs.map((g) => ({ g, oldV: oldStamps, newV: newStamps })),
+    ];
+    for (const { g, oldV, newV } of checks) {
       const goal = g.data() as GoalDoc;
-      if (goal.target > 0 && Math.floor(newVal / goal.target) > Math.floor(oldVal / goal.target)) {
+      if (goal.target > 0 && Math.floor(newV / goal.target) > Math.floor(oldV / goal.target)) {
         t.create(db.collection("rewards").doc(), { studentId: student, goalId: g.id, goalName: goal.name, reward: goal.reward, unlockedAt: now, redeemedAt: null });
         t.create(db.collection("notifications").doc(), {
           type: "GOAL_REACHED",
@@ -388,6 +399,7 @@ export const redeemCode = onCall(async (req) => {
       points,
       quantity,
       new_balance: newVal,
+      stamps: newStamps,
       next_goal: nextGoal ? { name: nextGoal.name, target: nextGoal.target, reward: nextGoal.reward } : null,
       unlocked,
     };

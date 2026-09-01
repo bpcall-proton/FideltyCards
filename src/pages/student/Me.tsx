@@ -4,7 +4,7 @@ import { Check, Coffee, CreditCard, Gift, PartyPopper, QrCode, Star, Ticket, Tre
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { DAILY_CODES_LIMIT, levelName, useStudent } from "@/lib/student";
-import type { Transaction } from "@/lib/types";
+import { STAMPS_KEY, type Transaction } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
 import { fmtDateTime, fmtInt } from "@/lib/utils";
 import { Badge, Button, buttonVariants, Card, CardContent, CardHeader, CardTitle, Modal, Progress } from "@/components/ui";
@@ -37,20 +37,23 @@ export default function Me() {
   if (!status) return <p className="text-muted-foreground">{t("loading")}</p>;
 
   const points = status.counters.points ?? 0;
-  const counterEntries = Object.entries(status.counters).filter(([k]) => k !== "points" && !k.startsWith("promo:"));
-  const counters = counterEntries.length > 0 ? counterEntries : [[t("defCoffee"), 0] as [string, number]];
   const pending = status.rewards.filter((r) => !r.redeemedAt);
-  const goalsFor = (k: string) => status.goals.filter((g) => g.counterKey === k).sort((a, b) => a.target - b.target);
-  const pointGoals = goalsFor("points");
+  const { settings } = status;
+  const showPoints = settings.showPointsCard;
+  const pointGoals = status.goals.filter((g) => g.counterKey === "points").sort((a, b) => a.target - b.target);
   const goal = pointGoals[0] ?? { target: 300, reward: t("defReward") };
   const nextGoal = goal;
   const cycles = Math.floor(points / goal.target);
   const cyclePoints = points % goal.target;
   const missing = goal.target - cyclePoints;
   const level = user?.level ?? 1;
-  const STAMPS = 10;
-  const perStamp = Math.max(1, Math.ceil(goal.target / STAMPS));
-  const stamped = Math.min(STAMPS, Math.floor(cyclePoints / perStamp));
+
+  const STAMPS = Math.max(1, settings.stampTarget);
+  const stampReward = settings.stampReward || t("defReward");
+  const stampsTotal = status.counters[STAMPS_KEY] ?? 0;
+  const stampCycles = Math.floor(stampsTotal / STAMPS);
+  const stamped = stampsTotal % STAMPS;
+  const stampCols = STAMPS <= 6 ? STAMPS : 5;
 
   const panel = "rounded-3xl bg-white border border-[#eee3d8] p-6 shadow-sm space-y-4";
   const pill = "inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-3 py-1 text-xs font-bold";
@@ -74,8 +77,8 @@ export default function Me() {
           <div className="text-xs font-black tracking-[0.3em] text-amber-200">{t("meMyBalance")}</div>
           <h1 className="text-2xl font-bold">{t("meHello", { n: user?.name.split(" ")[0] ?? "" })}</h1>
           <div className="flex items-end gap-3">
-            <span className="text-7xl font-black leading-none">{fmtInt(points)}</span>
-            <span className="text-2xl font-black text-amber-100 pb-2">{t("ptsUnit")}</span>
+            <span className="text-7xl font-black leading-none">{fmtInt(showPoints ? points : stamped)}</span>
+            <span className="text-2xl font-black text-amber-100 pb-2">{showPoints ? t("ptsUnit") : `/ ${STAMPS}`}</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <span className={pill}><Star className="h-3.5 w-3.5" /> {t("lvlLabel", { l: levelName(level) })}</span>
@@ -89,25 +92,13 @@ export default function Me() {
       </section>
 
       <section className={panel}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 font-black"><TrendingUp className="h-4 w-4 text-primary" /> {t("meNextReward")}</div>
-          <div className="text-sm font-semibold text-[#7a6a5c]">{nextGoal.reward}</div>
-        </div>
-        <div className="text-3xl font-black">{fmtInt(cyclePoints)}<span className="text-[#b8a898]"> / {fmtInt(nextGoal.target)}</span></div>
-        <Progress value={(100 * cyclePoints) / nextGoal.target} className="h-3 bg-[#fde8d3]" />
-        <div className="text-sm font-semibold text-primary">
-          {t("missing", { n: fmtInt(missing), u: t("unitPoints") })}{cycles > 0 && <span className="text-[#9a8a7c]"> · {t("stampCycle", { n: cycles })}</span>}
-        </div>
-      </section>
-
-      <section className={panel}>
         <div className="flex items-center gap-2 font-black"><CreditCard className="h-4 w-4 text-primary" /> {t("stampTitle")}</div>
         <div className="rounded-2xl bg-gradient-to-br from-[#f97316] to-[#c2410c] p-5 text-white shadow-inner space-y-4">
           <div className="flex justify-between items-center">
             <div className="font-black tracking-wide">{t("appName")}</div>
             <div className="text-sm font-semibold">{user?.name}</div>
           </div>
-          <div className="grid grid-cols-5 gap-2.5">
+          <div className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${stampCols}, minmax(0, 1fr))` }}>
             {Array.from({ length: STAMPS }).map((_, i) => (
               <div key={i} className={`aspect-square rounded-xl grid place-items-center border-2 transition ${i < stamped ? "bg-white text-primary border-white shadow" : "border-dashed border-white/50 text-white/40"}`}>
                 {i < stamped ? <Check className="h-6 w-6 stroke-[3]" /> : <Coffee className="h-5 w-5" />}
@@ -116,34 +107,28 @@ export default function Me() {
           </div>
           <div className="flex justify-between text-xs font-semibold opacity-90">
             <span>{stamped} / {STAMPS}</span>
-            <span>🎁 {nextGoal.reward}</span>
+            <span>🎁 {stampReward}</span>
           </div>
         </div>
-        <div className="text-sm text-[#7a6a5c]">{t("stampHint", { n: fmtInt(perStamp), r: nextGoal.reward })}</div>
+        <div className="text-sm text-[#7a6a5c] font-semibold">
+          {t("stampHint", { n: STAMPS - stamped, r: stampReward })}
+          {stampCycles > 0 && <span className="text-[#9a8a7c] font-normal"> · {t("stampCycle", { n: stampCycles })}</span>}
+        </div>
       </section>
 
-      <div className="grid gap-6 md:grid-cols-2">
-      {counters.map(([k, v]) => {
-        const g = goalsFor(k)[0] ?? { target: 5, reward: t("defReward") };
-        const inCycle = v % g.target === 0 && v > 0 ? g.target : v % g.target;
-        return (
-          <section key={k} className={panel}>
-            <div className="flex items-center gap-2 font-black"><Coffee className="h-4 w-4 text-primary" /> {k}</div>
-            <div className="text-3xl font-black">{fmtInt(inCycle)}<span className="text-[#b8a898]">/{g.target}</span></div>
-            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(g.target, 5)}, minmax(0, 1fr))` }}>
-              {Array.from({ length: g.target }).map((_, i) => (
-                <div key={i} className={`h-11 rounded-xl grid place-items-center border-2 ${i < inCycle ? "bg-primary border-primary text-white shadow" : "border-dashed border-[#e3d5c6] bg-[#fbf7f2]"}`}>
-                  {i < inCycle && <Check className="h-5 w-5 stroke-[3]" />}
-                </div>
-              ))}
-            </div>
-            <div className="text-sm text-[#7a6a5c] font-semibold">
-              {inCycle < g.target ? t("meStampMissing", { n: g.target - inCycle, p: k.toLowerCase(), r: g.reward }) : `🎁 ${g.reward}`}
-            </div>
-          </section>
-        );
-      })}
-      </div>
+      {showPoints && (
+        <section className={panel}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 font-black"><TrendingUp className="h-4 w-4 text-primary" /> {t("meNextReward")}</div>
+            <div className="text-sm font-semibold text-[#7a6a5c]">{nextGoal.reward}</div>
+          </div>
+          <div className="text-3xl font-black">{fmtInt(cyclePoints)}<span className="text-[#b8a898]"> / {fmtInt(nextGoal.target)}</span></div>
+          <Progress value={(100 * cyclePoints) / nextGoal.target} className="h-3 bg-[#fde8d3]" />
+          <div className="text-sm font-semibold text-primary">
+            {t("missing", { n: fmtInt(missing), u: t("unitPoints") })}{cycles > 0 && <span className="text-[#9a8a7c]"> · {t("stampCycle", { n: cycles })}</span>}
+          </div>
+        </section>
+      )}
 
       <section className={panel}>
         <div className="flex items-center gap-2 font-black"><Coffee className="h-4 w-4 text-primary" /> {t("howTitle")}</div>

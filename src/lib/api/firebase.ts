@@ -9,8 +9,9 @@ import {
 } from "firebase/firestore";
 import { getFunctions, httpsCallable, type Functions } from "firebase/functions";
 import type {
-  AdminNotification, Code, GenerateLotInput, Goal, Lot, LoyaltyApi, Promotion, RedeemResult, StudentStatus, Transaction, User,
+  AdminNotification, AppSettings, Code, GenerateLotInput, Goal, Lot, LoyaltyApi, Promotion, RedeemResult, StudentStatus, Transaction, User,
 } from "../types";
+import { DEFAULT_SETTINGS, STAMPS_KEY } from "../types";
 import { activePromotions } from "../promotions";
 
 const iso = (v: unknown): string | undefined =>
@@ -176,7 +177,32 @@ export class FirebaseApi implements LoyaltyApi {
 
   async listGoals(): Promise<Goal[]> {
     const snap = await getDocs(query(collection(this.db, "goals"), where("active", "==", true), orderBy("target")));
-    return snap.docs.map((d) => mapGoal(d.id, d.data()));
+    return snap.docs.map((d) => mapGoal(d.id, d.data())).filter((g) => g.counterKey !== STAMPS_KEY);
+  }
+
+  private settingsFrom(app: DocumentData | undefined, goals: Goal[]): AppSettings {
+    const stamp = goals.find((g) => g.counterKey === STAMPS_KEY);
+    return {
+      stampTarget: stamp?.target ?? DEFAULT_SETTINGS.stampTarget,
+      stampReward: stamp?.reward ?? DEFAULT_SETTINGS.stampReward,
+      showPointsCard: app?.showPointsCard === true,
+    };
+  }
+
+  async getSettings(): Promise<AppSettings> {
+    const [app, goals] = await Promise.all([
+      getDoc(doc(this.db, "settings", "app")),
+      getDocs(query(collection(this.db, "goals"), where("active", "==", true), where("counterKey", "==", STAMPS_KEY))),
+    ]);
+    return this.settingsFrom(app.data(), goals.docs.map((d) => mapGoal(d.id, d.data())));
+  }
+
+  async saveSettings(s: AppSettings) {
+    await setDoc(doc(this.db, "settings", "app"), { showPointsCard: s.showPointsCard }, { merge: true });
+    const snap = await getDocs(query(collection(this.db, "goals"), where("counterKey", "==", STAMPS_KEY)));
+    const row = { name: "stamps", counterKey: STAMPS_KEY, target: s.stampTarget, reward: s.stampReward, active: true };
+    if (snap.empty) await addDoc(collection(this.db, "goals"), row);
+    else await Promise.all(snap.docs.map((d, i) => (i === 0 ? updateDoc(d.ref, row) : deleteDoc(d.ref))));
   }
 
   async saveGoal(g: Omit<Goal, "id"> & { id?: string }) {
@@ -194,16 +220,19 @@ export class FirebaseApi implements LoyaltyApi {
   async myStatus(): Promise<StudentStatus> {
     const u = this.auth.currentUser;
     if (!u) throw new Error("NOT_AUTHENTICATED");
-    const [counters, goals, rewards] = await Promise.all([
+    const [counters, goals, rewards, app] = await Promise.all([
       getDoc(doc(this.db, "counters", u.uid)),
       getDocs(query(collection(this.db, "goals"), where("active", "==", true), orderBy("target"))),
       getDocs(query(collection(this.db, "rewards"), where("studentId", "==", u.uid), orderBy("unlockedAt", "desc"))),
+      getDoc(doc(this.db, "settings", "app")),
     ]);
     const c: Record<string, number> = {};
     for (const [k, v] of Object.entries(counters.data() ?? {})) if (typeof v === "number") c[k] = v;
+    const allGoals = goals.docs.map((d) => mapGoal(d.id, d.data()));
     return {
       counters: c,
-      goals: goals.docs.map((d) => mapGoal(d.id, d.data())),
+      goals: allGoals.filter((g) => g.counterKey !== STAMPS_KEY),
+      settings: this.settingsFrom(app.data(), allGoals),
       rewards: rewards.docs.map((d) => {
         const r = d.data();
         return { id: d.id, reward: r.reward, unlockedAt: iso(r.unlockedAt) ?? "", redeemedAt: iso(r.redeemedAt) };
