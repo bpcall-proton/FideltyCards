@@ -6,6 +6,7 @@ import { codeFromQrPayload, normalizeCode } from "@/lib/codegen";
 import { redeemErrorMessage, type RedeemResult } from "@/lib/types";
 import { deviceId, fmtInt } from "@/lib/utils";
 import { t as tr, useI18n } from "@/lib/i18n";
+import { useStudent } from "@/lib/student";
 import { Button, Card, CardContent, Input, Modal, Progress } from "@/components/ui";
 import QrScanner from "@/components/QrScanner";
 
@@ -18,6 +19,7 @@ export default function Redeem() {
   const [scanError, setScanError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<RedeemResult | null>(null);
+  const { reload } = useStudent();
   const [showReward, setShowReward] = useState(false);
 
   const submit = useCallback(async (raw: string) => {
@@ -29,6 +31,7 @@ export default function Redeem() {
       // il client invia solo il codice: il valore lo decide il backend
       const r = await api.redeemCode(c, deviceId());
       setResult(r);
+      if (r.ok) void reload();
       if (r.ok && r.unlocked.length > 0) setShowReward(true);
       if (r.ok) setCode("");
     } catch (e) {
@@ -37,7 +40,7 @@ export default function Redeem() {
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [reload]);
 
   useEffect(() => {
     const fromQr = params.get("code");

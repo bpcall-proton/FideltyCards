@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { StudentProvider } from "@/lib/student";
 import { I18nProvider, useI18n } from "@/lib/i18n";
 import Login from "@/pages/Login";
 import Generate from "@/pages/admin/Generate";
@@ -19,7 +20,7 @@ function Routed() {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{t("loading")}</div>;
   if (!user) return <Login />;
   const isAdmin = user.role === "admin";
-  const home = isAdmin ? "/admin/generate" : "/card";
+  const home = isAdmin ? "/admin/generate" : "/me";
   return (
     <Routes>
       <Route element={<Layout />}>
@@ -47,9 +48,11 @@ export default function App() {
   return (
     <I18nProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <Routed />
-        </BrowserRouter>
+        <StudentProvider>
+          <BrowserRouter>
+            <Routed />
+          </BrowserRouter>
+        </StudentProvider>
       </AuthProvider>
     </I18nProvider>
   );
