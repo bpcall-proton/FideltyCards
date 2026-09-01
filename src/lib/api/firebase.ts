@@ -94,7 +94,7 @@ export class FirebaseApi implements LoyaltyApi {
   async generateLot(i: GenerateLotInput): Promise<Lot> {
     const { lotId } = await this.call<GenerateLotInput, { lotId: string }>("generateCodeLot")(i);
     const lot = await this.getLot(lotId);
-    if (!lot) throw new Error("Lotto non trovato dopo la generazione");
+    if (!lot) throw new Error("LOT_NOT_FOUND");
     return lot;
   }
 

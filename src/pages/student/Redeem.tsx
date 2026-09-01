@@ -3,13 +3,15 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Camera, Loader2, PartyPopper, Star, XCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { codeFromQrPayload, normalizeCode } from "@/lib/codegen";
-import { REDEEM_ERROR_MESSAGES, type RedeemResult } from "@/lib/types";
+import { redeemErrorMessage, type RedeemResult } from "@/lib/types";
 import { deviceId, fmtInt } from "@/lib/utils";
+import { t as tr, useI18n } from "@/lib/i18n";
 import { Button, Card, CardContent, Input, Modal, Progress } from "@/components/ui";
 import QrScanner from "@/components/QrScanner";
 
 export default function Redeem() {
   const [params, setParams] = useSearchParams();
+  const { t } = useI18n();
   const nav = useNavigate();
   const [code, setCode] = useState(params.get("code") ?? "");
   const [scanning, setScanning] = useState(false);
@@ -62,7 +64,7 @@ export default function Redeem() {
     <div className="max-w-md mx-auto space-y-4">
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <h1 className="text-2xl font-bold text-center">🎟️ INSERISCI IL TUO CODICE</h1>
+          <h1 className="text-2xl font-bold text-center">{t("rdTitle")}</h1>
           <form onSubmit={onSubmit} className="space-y-3">
             <Input
               value={code}
@@ -76,17 +78,17 @@ export default function Redeem() {
               disabled={busy}
             />
             <Button type="submit" size="xl" className="w-full" disabled={busy || code.trim().length < 4}>
-              {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : "CONFERMA"}
+              {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : t("rdConfirm")}
             </Button>
           </form>
-          <div className="text-center text-sm text-muted-foreground">oppure</div>
+          <div className="text-center text-sm text-muted-foreground">{t("or")}</div>
           <Button type="button" size="xl" variant="secondary" className="w-full" onClick={() => { setScanError(null); setScanning(true); }}>
-            <Camera className="h-5 w-5" /> SCANSIONA QR
+            <Camera className="h-5 w-5" /> {t("rdScan")}
           </Button>
           {scanning && (
             <div className="space-y-2">
               <QrScanner onScan={onScan} onError={(m) => { setScanError(m); setScanning(false); }} />
-              <Button variant="ghost" className="w-full" onClick={() => setScanning(false)}>Annulla</Button>
+              <Button variant="ghost" className="w-full" onClick={() => setScanning(false)}>{t("cancel")}</Button>
             </div>
           )}
           {scanError && <p className="text-sm text-destructive text-center">{scanError}</p>}
@@ -96,7 +98,7 @@ export default function Redeem() {
       {result && result.ok === false && (
         <Card className="border-destructive bg-destructive/5 animate-slide-in">
           <CardContent className="pt-5 flex items-center gap-3 text-destructive font-bold">
-            <XCircle className="h-8 w-8 shrink-0" /> ❌ {REDEEM_ERROR_MESSAGES[result.error]}
+            <XCircle className="h-8 w-8 shrink-0" /> ❌ {redeemErrorMessage(result.error)}
           </CardContent>
         </Card>
       )}
@@ -104,19 +106,19 @@ export default function Redeem() {
       {result && result.ok === true && (
         <Card className="border-emerald-500 bg-emerald-50 animate-slide-in">
           <CardContent className="pt-5 space-y-3 text-center">
-            <div className="text-xl font-bold text-emerald-700">🎉 CODICE ACCETTATO!</div>
-            <div className="text-sm text-muted-foreground">Hai ricevuto:</div>
+            <div className="text-xl font-bold text-emerald-700">{t("rdAccepted")}</div>
+            <div className="text-sm text-muted-foreground">{t("rdReceived")}</div>
             <div className="text-3xl font-black flex items-center justify-center gap-2">
               <Star className="h-7 w-7 text-amber-500 fill-amber-400" />
-              {result.points > 0 ? `+${result.points} PUNTI` : `+${result.quantity} ${labelFor(result.counter_key, result.lot_name)}`}
+              {result.points > 0 ? `+${result.points} ${t("POINTS")}` : `+${result.quantity} ${labelFor(result.counter_key, result.lot_name)}`}
             </div>
             <div className="text-sm">
-              Nuovo saldo: <b>{fmtInt(result.new_balance)} {result.counter_key === "points" ? "PUNTI" : labelFor(result.counter_key, result.lot_name)}</b>
+              {t("rdNewBalance")} <b>{fmtInt(result.new_balance)} {result.counter_key === "points" ? t("POINTS") : labelFor(result.counter_key, result.lot_name)}</b>
             </div>
             {result.next_goal && (
-              <GoalProgress value={result.new_balance} target={result.next_goal.target} reward={result.next_goal.reward} unit={result.counter_key === "points" ? "punti" : labelFor(result.counter_key, result.lot_name).toLowerCase()} />
+              <GoalProgress value={result.new_balance} target={result.next_goal.target} reward={result.next_goal.reward} unit={result.counter_key === "points" ? t("unitPoints") : labelFor(result.counter_key, result.lot_name).toLowerCase()} />
             )}
-            <div className="text-xs text-muted-foreground font-mono">Transazione #{result.transaction_id}</div>
+            <div className="text-xs text-muted-foreground font-mono">{t("rdTransaction", { n: result.transaction_id })}</div>
           </CardContent>
         </Card>
       )}
@@ -125,15 +127,15 @@ export default function Redeem() {
         {result?.ok && (
           <div className="text-center space-y-3">
             <PartyPopper className="h-14 w-14 text-primary mx-auto" />
-            <h2 className="text-2xl font-black">🎉 CONGRATULAZIONI!</h2>
-            <p>Hai raggiunto il tuo obiettivo!</p>
+            <h2 className="text-2xl font-black">{t("rdCongrats")}</h2>
+            <p>{t("rdGoalReached")}</p>
             {result.unlocked.map((u, i) => (
               <div key={i} className="rounded-lg bg-primary/10 p-4">
-                <div className="text-sm text-muted-foreground">🎁 Hai sbloccato:</div>
+                <div className="text-sm text-muted-foreground">{t("rdUnlocked")}</div>
                 <div className="text-xl font-bold">{u.reward}</div>
               </div>
             ))}
-            <Button size="lg" className="w-full" onClick={() => { setShowReward(false); nav("/me"); }}>RISCATTA</Button>
+            <Button size="lg" className="w-full" onClick={() => { setShowReward(false); nav("/me"); }}>{t("rdRedeem")}</Button>
           </div>
         )}
       </Modal>
@@ -142,12 +144,13 @@ export default function Redeem() {
 }
 
 function labelFor(counterKey: string, lotName: string) {
-  if (counterKey === "points") return "PUNTI";
+  if (counterKey === "points") return tr("POINTS");
   if (counterKey.startsWith("promo:")) return lotName.toUpperCase();
   return counterKey.toUpperCase();
 }
 
 export function GoalProgress({ value, target, reward, unit }: { value: number; target: number; reward: string; unit: string }) {
+  const { t } = useI18n();
   const within = value % target;
   const shown = within === 0 && value > 0 ? target : within;
   const missing = target - shown;
@@ -155,10 +158,10 @@ export function GoalProgress({ value, target, reward, unit }: { value: number; t
     <div className="space-y-1.5 text-left">
       <Progress value={(100 * shown) / target} />
       <div className="flex justify-between text-sm">
-        <span>Progress: <b>{fmtInt(shown)} / {fmtInt(target)}</b></span>
+        <span>{t("progress")} <b>{fmtInt(shown)} / {fmtInt(target)}</b></span>
         <span className="text-muted-foreground">🎁 {reward}</span>
       </div>
-      {missing > 0 && missing < target && <div className="text-sm text-center text-primary font-medium">Ti mancano {fmtInt(missing)} {unit} al prossimo premio!</div>}
+      {missing > 0 && missing < target && <div className="text-sm text-center text-primary font-medium">{t("missing", { n: fmtInt(missing), u: unit })}</div>}
     </div>
   );
 }

@@ -1,0 +1,369 @@
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+
+export type Lang = "ro" | "it" | "ru";
+export const LANGS: { code: Lang; label: string; flag: string }[] = [
+  { code: "ro", label: "Română", flag: "🇷🇴" },
+  { code: "it", label: "Italiano", flag: "🇮🇹" },
+  { code: "ru", label: "Русский", flag: "🇷🇺" },
+];
+export const LOCALES: Record<Lang, string> = { ro: "ro-RO", it: "it-IT", ru: "ru-RU" };
+const STORAGE_KEY = "fidelty-lang";
+const DEFAULT_LANG: Lang = "ro";
+
+const ro = {
+  appName: "Coduri Fidelitate",
+  loading: "Se încarcă…",
+  or: "sau",
+  none: "niciuna",
+  cancel: "Anulează",
+  demoFooter: "Mod demo (date în browser). Setează VITE_FIREBASE_API_KEY și VITE_FIREBASE_PROJECT_ID pentru a folosi Firebase.",
+
+  // nav
+  navGenerate: "Generează coduri",
+  navLots: "Loturi",
+  navGoals: "Obiective",
+  navNotifications: "Notificări",
+  navRedeem: "Introdu codul",
+  navMe: "Punctele mele",
+
+  // login
+  loginFullName: "Nume și prenume",
+  loginEmail: "Email",
+  loginPassword: "Parolă",
+  loginSignIn: "Autentificare",
+  loginSignUp: "Înregistrare",
+  loginNoAccount: "Nu ai cont? Înregistrează-te",
+  loginHaveAccount: "Ai deja cont? Autentifică-te",
+  signUpIncomplete: "Înregistrare incompletă: verifică emailul de confirmare.",
+
+  // value types / formats
+  vtPoints: "Puncte",
+  vtQuantity: "Cantitate produs",
+  vtBonus: "Bonus",
+  vtProduct: "Produs",
+  vtPromotion: "Promoție",
+  cfNumeric: "Doar numeric",
+  cfAlphanumeric: "Alfanumeric",
+  cfQr: "Cod QR",
+  cfNumericQr: "Numeric + QR",
+  valPoints: "+{n} puncte",
+  valBonus: "+{n} puncte bonus",
+  valQuantity: "+{n} {p} consumat(e)",
+  valProduct: "{n} {p}",
+  valPromotion: "Participare: {name}",
+  unitPoints: "puncte",
+  POINTS: "PUNCTE",
+
+  // code status
+  stActive: "Disponibil",
+  stUsed: "Utilizat",
+  stExpired: "Expirat",
+  stCancelled: "Anulat",
+  lotActive: "Activ",
+  lotCancelled: "Dezactivat",
+
+  // redeem errors
+  errNotAuthenticated: "Trebuie să te autentifici.",
+  errNotFound: "COD INVALID",
+  errAlreadyUsed: "COD DEJA UTILIZAT",
+  errCancelled: "COD DEZACTIVAT",
+  errExpired: "COD EXPIRAT",
+  errNotYetValid: "COD ÎNCĂ NEVALABIL",
+  errLevelTooLow: "COD INDISPONIBIL PENTRU NIVELUL TĂU",
+  errPromotionExhausted: "PROMOȚIE EPUIZATĂ",
+  errDailyLimit: "LIMITA ZILNICĂ DE CODURI ATINSĂ",
+  errDailyPointsLimit: "LIMITA ZILNICĂ DE PUNCTE ATINSĂ",
+
+  // generate
+  genTitle: "GENEREAZĂ CODURI NOI",
+  genSubtitle: "Codurile sunt aleatorii și imprevizibile; valoarea lor este decisă doar de server.",
+  genLotName: "Nume lot",
+  genLotNamePh: "PROMO CAFEA",
+  genType: "Tip",
+  genProduct: "Produs",
+  genProductHint: "Ex. CAFEA, MIC DEJUN. Contorul studentului crește pentru acest produs.",
+  genProductPh: "CAFEA",
+  genPromoId: "ID promoție (opțional)",
+  genPromoIdHint: "Permite dezactivarea tuturor loturilor unei promoții împreună.",
+  genPromoIdPh: "id promoție",
+  genValueQty: "Valoare (cantitate)",
+  genValuePts: "Valoare (puncte)",
+  genQuantity: "Număr de coduri",
+  genCustom: "Personalizat",
+  genExpiry: "Expirare",
+  genExpNone: "Fără",
+  genExpDate: "Dată de expirare",
+  genExpRange: "Perioadă de valabilitate",
+  genFormat: "Format",
+  genFmtNumeric: "Cod numeric",
+  genFmtQr: "Cod QR",
+  genFmtAlnum: "Alfanumeric",
+  genLength: "Lungime",
+  genHideLimits: "Ascunde limitele",
+  genShowLimits: "Limite avansate (opțional)",
+  genMaxPerDay: "Max coduri/zi per student",
+  genMaxPtsDay: "Max puncte/zi per student",
+  genMaxTotal: "Max utilizări totale lot",
+  genMinLevel: "Nivel minim student",
+  genGenerating: "Se generează {n} coduri…",
+  genSubmit: "GENEREAZĂ CODURI",
+  genErrName: "Introdu numele lotului.",
+  genErrFormat: "Alege cel puțin un format.",
+  genErrProduct: "Indică produsul (ex. CAFEA).",
+  genErrQty: "Cantitate invalidă.",
+  genDone: "{n} CODURI GENERATE",
+  genLot: "Lot",
+  genDownloadPdf: "Descarcă PDF",
+  genDownloadExcel: "Descarcă Excel",
+  genViewLot: "Vezi lotul",
+  genAnother: "Generează alt lot",
+  preparingFile: "Se pregătește fișierul…",
+
+  // lots
+  lotsTitle: "Loturi",
+  lotsEmpty: "Niciun lot. Generează primul lot de coduri.",
+  LOT: "LOT",
+  statCodes: "Coduri",
+  statUsed: "Utilizate",
+  statAvailable: "Disponibile",
+  statExpired: "Expirate",
+  statUsage: "Utilizare",
+  lotExpiry: "Expirare",
+
+  // lot detail
+  allLots: "Toate loturile",
+  ldFormat: "Format",
+  ldCreated: "Creat",
+  ldValidity: "Valabilitate",
+  ldNoExpiry: "fără expirare",
+  ldMaxCodesDay: "Max {n} coduri/zi",
+  ldMaxPtsDay: "Max {n} puncte/zi",
+  ldMaxUses: "Max {n} utilizări",
+  ldMinLevel: "Nivel ≥ {n}",
+  ldPdfQr: "PDF QR (tipar)",
+  ldPdfTable: "PDF tabel",
+  ldCancelPromo: "Dezactivează promoția",
+  ldCancelLot: "DEZACTIVEAZĂ LOTUL",
+  ldTabCodes: "Coduri ({n})",
+  ldTabHistory: "Istoric utilizări ({n})",
+  ldSearch: "Caută cod…",
+  ldAllStatuses: "Toate stările",
+  thCode: "Cod",
+  thValue: "Valoare",
+  thStatus: "Stare",
+  thUsedBy: "Utilizat de",
+  thDateTime: "Data / ora",
+  thTransaction: "Tranzacție",
+  thStudent: "Student",
+  thDevice: "Dispozitiv",
+  thUsedAt: "Utilizat la",
+  ldCancelCode: "Dezactivează codul",
+  prev: "Anterior",
+  next: "Următor",
+  pageOf: "Pagina {a} / {b}",
+  ldNoHistory: "Nicio utilizare înregistrată.",
+  confirmCancelLot: "Dezactivezi lotul #{n}? Toate codurile neutilizate vor deveni CANCELLED.",
+  confirmCancelCode: "Dezactivezi codul {c}?",
+  confirmCancelPromo: "Dezactivezi TOATE loturile acestei promoții?",
+
+  // goals
+  goalsTitle: "Obiective și premii",
+  goalsSubtitle: "Când un contor al studentului atinge ținta, premiul se deblochează automat și adminul primește o notificare.",
+  goalName: "Nume obiectiv",
+  goalNamePh: "300 puncte",
+  goalCounter: "Contor",
+  goalCounterHint: "'points' pentru puncte, sau produsul (ex. CAFEA)",
+  goalTarget: "Țintă",
+  goalReward: "Premiu",
+  goalRewardPh: "Cafea gratis",
+  goalAdd: "Adaugă obiectiv",
+  goalsEmpty: "Niciun obiectiv.",
+
+  // notifications
+  notifTitle: "Notificări",
+  notifEmpty: "Nicio notificare.",
+  notifStudent: "Student:",
+  notifGoal: "Obiectiv:",
+  notifReward: "Premiu:",
+  notifDate: "Data:",
+
+  // redeem
+  rdTitle: "🎟️ INTRODU CODUL TĂU",
+  rdConfirm: "CONFIRMĂ",
+  rdScan: "SCANEAZĂ QR",
+  rdAccepted: "🎉 COD ACCEPTAT!",
+  rdReceived: "Ai primit:",
+  rdNewBalance: "Sold nou:",
+  rdTransaction: "Tranzacție #{n}",
+  rdCongrats: "🎉 FELICITĂRI!",
+  rdGoalReached: "Ți-ai atins obiectivul!",
+  rdUnlocked: "🎁 Ai deblocat:",
+  rdRedeem: "REVENDICĂ",
+  progress: "Progres:",
+  missing: "Îți mai lipsesc {n} {u} până la următorul premiu!",
+  cameraUnavailable: "Camera nu este disponibilă",
+
+  // me
+  meYourPoints: "PUNCTELE TALE",
+  meEnterCode: "INTRODU CODUL",
+  meConsumed: "{p} CONSUMATE",
+  meRewards: "Premiile tale",
+  meNoRewards: "Niciun premiu încă. Continuă să strângi coduri!",
+  meUnlockedOn: "Deblocat la {d}",
+  meRedeemedOn: "Revendicat {d}",
+  meHistory: "Istoric coduri",
+  meNoHistory: "Niciun cod utilizat.",
+
+  // export
+  exSummary: "Rezumat",
+  exName: "Nume",
+  exUsagePercent: "Procent utilizare",
+  exExpiryNone: "Fără",
+  exLotPrefix: "lot",
+} as const;
+
+export type I18nKey = keyof typeof ro;
+type Dict = Record<I18nKey, string>;
+
+const it: Dict = {
+  appName: "Fedeltà Codici",
+  loading: "Caricamento…",
+  or: "oppure",
+  none: "nessuna",
+  cancel: "Annulla",
+  demoFooter: "Modalità demo (dati nel browser). Imposta VITE_FIREBASE_API_KEY e VITE_FIREBASE_PROJECT_ID per usare Firebase.",
+  navGenerate: "Genera codici", navLots: "Lotti", navGoals: "Obiettivi", navNotifications: "Notifiche", navRedeem: "Inserisci codice", navMe: "I miei punti",
+  loginFullName: "Nome e cognome", loginEmail: "Email", loginPassword: "Password", loginSignIn: "Accedi", loginSignUp: "Registrati",
+  loginNoAccount: "Non hai un account? Registrati", loginHaveAccount: "Hai già un account? Accedi",
+  signUpIncomplete: "Registrazione non completata: controlla l'email di conferma.",
+  vtPoints: "Punti", vtQuantity: "Quantità prodotto", vtBonus: "Bonus", vtProduct: "Prodotto", vtPromotion: "Promozione",
+  cfNumeric: "Solo numerico", cfAlphanumeric: "Alfanumerico", cfQr: "QR Code", cfNumericQr: "Numerico + QR",
+  valPoints: "+{n} punti", valBonus: "+{n} punti bonus", valQuantity: "+{n} {p} consumati", valProduct: "{n} {p}", valPromotion: "Partecipazione: {name}",
+  unitPoints: "punti", POINTS: "PUNTI",
+  stActive: "Disponibile", stUsed: "Utilizzato", stExpired: "Scaduto", stCancelled: "Annullato", lotActive: "Attivo", lotCancelled: "Disattivato",
+  errNotAuthenticated: "Devi effettuare l'accesso.", errNotFound: "CODICE NON VALIDO", errAlreadyUsed: "CODICE GIÀ UTILIZZATO", errCancelled: "CODICE DISATTIVATO",
+  errExpired: "CODICE SCADUTO", errNotYetValid: "CODICE NON ANCORA VALIDO", errLevelTooLow: "CODICE NON DISPONIBILE PER IL TUO LIVELLO",
+  errPromotionExhausted: "PROMOZIONE ESAURITA", errDailyLimit: "LIMITE GIORNALIERO DI CODICI RAGGIUNTO", errDailyPointsLimit: "LIMITE GIORNALIERO DI PUNTI RAGGIUNTO",
+  genTitle: "GENERA NUOVI CODICI", genSubtitle: "I codici sono casuali e non prevedibili; il loro valore è deciso solo dal server.",
+  genLotName: "Nome lotto", genLotNamePh: "PROMO CAFFÈ", genType: "Tipo", genProduct: "Prodotto",
+  genProductHint: "Es. CAFFÈ, COLAZIONE. Il contatore dello studente aumenta per questo prodotto.", genProductPh: "CAFFÈ",
+  genPromoId: "ID promozione (opzionale)", genPromoIdHint: "Permette di disattivare tutti i lotti di una promozione insieme.", genPromoIdPh: "id promozione",
+  genValueQty: "Valore (quantità)", genValuePts: "Valore (punti)", genQuantity: "Quantità codici", genCustom: "Personalizzata",
+  genExpiry: "Scadenza", genExpNone: "Nessuna", genExpDate: "Data di scadenza", genExpRange: "Periodo di validità",
+  genFormat: "Formato", genFmtNumeric: "Codice numerico", genFmtQr: "QR Code", genFmtAlnum: "Alfanumerico", genLength: "Lunghezza",
+  genHideLimits: "Nascondi limiti", genShowLimits: "Limiti avanzati (opzionali)",
+  genMaxPerDay: "Max codici/giorno per studente", genMaxPtsDay: "Max punti/giorno per studente", genMaxTotal: "Max utilizzi totali lotto", genMinLevel: "Livello minimo studente",
+  genGenerating: "Generazione di {n} codici…", genSubmit: "GENERA CODICI",
+  genErrName: "Inserisci il nome del lotto.", genErrFormat: "Scegli almeno un formato.", genErrProduct: "Indica il prodotto (es. CAFFÈ).", genErrQty: "Quantità non valida.",
+  genDone: "{n} CODICI GENERATI", genLot: "Lotto", genDownloadPdf: "Scarica PDF", genDownloadExcel: "Scarica Excel", genViewLot: "Visualizza lotto", genAnother: "Genera un altro lotto",
+  preparingFile: "Preparazione file…",
+  lotsTitle: "Lotti", lotsEmpty: "Nessun lotto. Genera il primo lotto di codici.", LOT: "LOTTO",
+  statCodes: "Codici", statUsed: "Utilizzati", statAvailable: "Disponibili", statExpired: "Scaduti", statUsage: "Utilizzo", lotExpiry: "Scadenza",
+  allLots: "Tutti i lotti", ldFormat: "Formato", ldCreated: "Creato", ldValidity: "Validità", ldNoExpiry: "nessuna scadenza",
+  ldMaxCodesDay: "Max {n} codici/giorno", ldMaxPtsDay: "Max {n} punti/giorno", ldMaxUses: "Max {n} utilizzi", ldMinLevel: "Livello ≥ {n}",
+  ldPdfQr: "PDF QR (stampa)", ldPdfTable: "PDF tabella", ldCancelPromo: "Disattiva promozione", ldCancelLot: "DISATTIVA LOTTO",
+  ldTabCodes: "Codici ({n})", ldTabHistory: "Storico utilizzi ({n})", ldSearch: "Cerca codice…", ldAllStatuses: "Tutti gli stati",
+  thCode: "Codice", thValue: "Valore", thStatus: "Stato", thUsedBy: "Utilizzato da", thDateTime: "Data / ora", thTransaction: "Transazione", thStudent: "Studente", thDevice: "Dispositivo", thUsedAt: "Utilizzato il",
+  ldCancelCode: "Disattiva codice", prev: "Precedente", next: "Successiva", pageOf: "Pagina {a} / {b}", ldNoHistory: "Nessun utilizzo registrato.",
+  confirmCancelLot: "Disattivare il lotto #{n}? Tutti i codici non ancora usati diventeranno CANCELLED.", confirmCancelCode: "Disattivare il codice {c}?", confirmCancelPromo: "Disattivare TUTTI i lotti di questa promozione?",
+  goalsTitle: "Obiettivi e premi", goalsSubtitle: "Quando un contatore dello studente raggiunge il target, il premio si sblocca automaticamente e l'admin riceve una notifica.",
+  goalName: "Nome obiettivo", goalNamePh: "300 punti", goalCounter: "Contatore", goalCounterHint: "'points' per i punti, oppure il prodotto (es. CAFFÈ)",
+  goalTarget: "Target", goalReward: "Premio", goalRewardPh: "Caffè gratis", goalAdd: "Aggiungi obiettivo", goalsEmpty: "Nessun obiettivo.",
+  notifTitle: "Notifiche", notifEmpty: "Nessuna notifica.", notifStudent: "Studente:", notifGoal: "Obiettivo:", notifReward: "Premio:", notifDate: "Data:",
+  rdTitle: "🎟️ INSERISCI IL TUO CODICE", rdConfirm: "CONFERMA", rdScan: "SCANSIONA QR", rdAccepted: "🎉 CODICE ACCETTATO!", rdReceived: "Hai ricevuto:",
+  rdNewBalance: "Nuovo saldo:", rdTransaction: "Transazione #{n}", rdCongrats: "🎉 CONGRATULAZIONI!", rdGoalReached: "Hai raggiunto il tuo obiettivo!",
+  rdUnlocked: "🎁 Hai sbloccato:", rdRedeem: "RISCATTA", progress: "Progress:", missing: "Ti mancano {n} {u} al prossimo premio!", cameraUnavailable: "Fotocamera non disponibile",
+  meYourPoints: "I TUOI PUNTI", meEnterCode: "INSERISCI CODICE", meConsumed: "{p} CONSUMATI", meRewards: "I tuoi premi",
+  meNoRewards: "Nessun premio ancora. Continua a raccogliere codici!", meUnlockedOn: "Sbloccato il {d}", meRedeemedOn: "Riscattato {d}",
+  meHistory: "Storico codici", meNoHistory: "Nessun codice utilizzato.",
+  exSummary: "Riepilogo", exName: "Nome", exUsagePercent: "Percentuale utilizzo", exExpiryNone: "Nessuna", exLotPrefix: "lotto",
+};
+
+const ru: Dict = {
+  appName: "Коды лояльности",
+  loading: "Загрузка…",
+  or: "или",
+  none: "нет",
+  cancel: "Отмена",
+  demoFooter: "Демо-режим (данные в браузере). Задайте VITE_FIREBASE_API_KEY и VITE_FIREBASE_PROJECT_ID для работы с Firebase.",
+  navGenerate: "Создать коды", navLots: "Партии", navGoals: "Цели", navNotifications: "Уведомления", navRedeem: "Ввести код", navMe: "Мои баллы",
+  loginFullName: "Имя и фамилия", loginEmail: "Email", loginPassword: "Пароль", loginSignIn: "Войти", loginSignUp: "Регистрация",
+  loginNoAccount: "Нет аккаунта? Зарегистрируйтесь", loginHaveAccount: "Уже есть аккаунт? Войти",
+  signUpIncomplete: "Регистрация не завершена: проверьте письмо с подтверждением.",
+  vtPoints: "Баллы", vtQuantity: "Количество товара", vtBonus: "Бонус", vtProduct: "Товар", vtPromotion: "Акция",
+  cfNumeric: "Только цифры", cfAlphanumeric: "Буквенно-цифровой", cfQr: "QR-код", cfNumericQr: "Цифры + QR",
+  valPoints: "+{n} баллов", valBonus: "+{n} бонусных баллов", valQuantity: "+{n} {p}", valProduct: "{n} {p}", valPromotion: "Участие: {name}",
+  unitPoints: "баллов", POINTS: "БАЛЛОВ",
+  stActive: "Доступен", stUsed: "Использован", stExpired: "Истёк", stCancelled: "Отменён", lotActive: "Активна", lotCancelled: "Отключена",
+  errNotAuthenticated: "Необходимо войти.", errNotFound: "НЕВЕРНЫЙ КОД", errAlreadyUsed: "КОД УЖЕ ИСПОЛЬЗОВАН", errCancelled: "КОД ОТКЛЮЧЁН",
+  errExpired: "КОД ИСТЁК", errNotYetValid: "КОД ЕЩЁ НЕ ДЕЙСТВУЕТ", errLevelTooLow: "КОД НЕДОСТУПЕН ДЛЯ ВАШЕГО УРОВНЯ",
+  errPromotionExhausted: "АКЦИЯ ИСЧЕРПАНА", errDailyLimit: "ДНЕВНОЙ ЛИМИТ КОДОВ ДОСТИГНУТ", errDailyPointsLimit: "ДНЕВНОЙ ЛИМИТ БАЛЛОВ ДОСТИГНУТ",
+  genTitle: "СОЗДАТЬ НОВЫЕ КОДЫ", genSubtitle: "Коды случайные и непредсказуемые; их ценность определяет только сервер.",
+  genLotName: "Название партии", genLotNamePh: "АКЦИЯ КОФЕ", genType: "Тип", genProduct: "Товар",
+  genProductHint: "Напр. КОФЕ, ЗАВТРАК. Счётчик студента растёт для этого товара.", genProductPh: "КОФЕ",
+  genPromoId: "ID акции (необязательно)", genPromoIdHint: "Позволяет отключить все партии акции одновременно.", genPromoIdPh: "id акции",
+  genValueQty: "Значение (количество)", genValuePts: "Значение (баллы)", genQuantity: "Количество кодов", genCustom: "Своё",
+  genExpiry: "Срок действия", genExpNone: "Без срока", genExpDate: "Дата окончания", genExpRange: "Период действия",
+  genFormat: "Формат", genFmtNumeric: "Цифровой код", genFmtQr: "QR-код", genFmtAlnum: "Буквенно-цифровой", genLength: "Длина",
+  genHideLimits: "Скрыть лимиты", genShowLimits: "Дополнительные лимиты (необязательно)",
+  genMaxPerDay: "Макс. кодов/день на студента", genMaxPtsDay: "Макс. баллов/день на студента", genMaxTotal: "Макс. использований партии", genMinLevel: "Мин. уровень студента",
+  genGenerating: "Создание {n} кодов…", genSubmit: "СОЗДАТЬ КОДЫ",
+  genErrName: "Введите название партии.", genErrFormat: "Выберите хотя бы один формат.", genErrProduct: "Укажите товар (напр. КОФЕ).", genErrQty: "Неверное количество.",
+  genDone: "{n} КОДОВ СОЗДАНО", genLot: "Партия", genDownloadPdf: "Скачать PDF", genDownloadExcel: "Скачать Excel", genViewLot: "Открыть партию", genAnother: "Создать ещё партию",
+  preparingFile: "Подготовка файла…",
+  lotsTitle: "Партии", lotsEmpty: "Партий нет. Создайте первую партию кодов.", LOT: "ПАРТИЯ",
+  statCodes: "Кодов", statUsed: "Использовано", statAvailable: "Доступно", statExpired: "Истекло", statUsage: "Использование", lotExpiry: "Срок",
+  allLots: "Все партии", ldFormat: "Формат", ldCreated: "Создана", ldValidity: "Действует", ldNoExpiry: "без срока",
+  ldMaxCodesDay: "Макс. {n} кодов/день", ldMaxPtsDay: "Макс. {n} баллов/день", ldMaxUses: "Макс. {n} использований", ldMinLevel: "Уровень ≥ {n}",
+  ldPdfQr: "PDF QR (печать)", ldPdfTable: "PDF таблица", ldCancelPromo: "Отключить акцию", ldCancelLot: "ОТКЛЮЧИТЬ ПАРТИЮ",
+  ldTabCodes: "Коды ({n})", ldTabHistory: "История ({n})", ldSearch: "Поиск кода…", ldAllStatuses: "Все статусы",
+  thCode: "Код", thValue: "Значение", thStatus: "Статус", thUsedBy: "Использовал", thDateTime: "Дата / время", thTransaction: "Транзакция", thStudent: "Студент", thDevice: "Устройство", thUsedAt: "Использован",
+  ldCancelCode: "Отключить код", prev: "Назад", next: "Далее", pageOf: "Страница {a} / {b}", ldNoHistory: "Использований нет.",
+  confirmCancelLot: "Отключить партию #{n}? Все неиспользованные коды станут CANCELLED.", confirmCancelCode: "Отключить код {c}?", confirmCancelPromo: "Отключить ВСЕ партии этой акции?",
+  goalsTitle: "Цели и награды", goalsSubtitle: "Когда счётчик студента достигает цели, награда открывается автоматически, а админ получает уведомление.",
+  goalName: "Название цели", goalNamePh: "300 баллов", goalCounter: "Счётчик", goalCounterHint: "'points' для баллов или товар (напр. КОФЕ)",
+  goalTarget: "Цель", goalReward: "Награда", goalRewardPh: "Бесплатный кофе", goalAdd: "Добавить цель", goalsEmpty: "Целей нет.",
+  notifTitle: "Уведомления", notifEmpty: "Уведомлений нет.", notifStudent: "Студент:", notifGoal: "Цель:", notifReward: "Награда:", notifDate: "Дата:",
+  rdTitle: "🎟️ ВВЕДИТЕ ВАШ КОД", rdConfirm: "ПОДТВЕРДИТЬ", rdScan: "СКАНИРОВАТЬ QR", rdAccepted: "🎉 КОД ПРИНЯТ!", rdReceived: "Вы получили:",
+  rdNewBalance: "Новый баланс:", rdTransaction: "Транзакция #{n}", rdCongrats: "🎉 ПОЗДРАВЛЯЕМ!", rdGoalReached: "Вы достигли цели!",
+  rdUnlocked: "🎁 Вы открыли:", rdRedeem: "ПОЛУЧИТЬ", progress: "Прогресс:", missing: "До следующей награды не хватает {n} {u}!", cameraUnavailable: "Камера недоступна",
+  meYourPoints: "ВАШИ БАЛЛЫ", meEnterCode: "ВВЕСТИ КОД", meConsumed: "{p}: ИСПОЛЬЗОВАНО", meRewards: "Ваши награды",
+  meNoRewards: "Наград пока нет. Продолжайте собирать коды!", meUnlockedOn: "Открыто {d}", meRedeemedOn: "Получено {d}",
+  meHistory: "История кодов", meNoHistory: "Кодов не использовано.",
+  exSummary: "Сводка", exName: "Название", exUsagePercent: "Процент использования", exExpiryNone: "Нет", exLotPrefix: "partiya",
+};
+
+const DICTS: Record<Lang, Dict> = { ro, it, ru };
+
+function readLang(): Lang {
+  const v = localStorage.getItem(STORAGE_KEY);
+  return v === "it" || v === "ru" || v === "ro" ? v : DEFAULT_LANG;
+}
+
+let currentLang: Lang = readLang();
+
+/** Traduzione utilizzabile anche fuori da React (export, tipi). */
+export function t(key: I18nKey, params?: Record<string, string | number>): string {
+  let s: string = DICTS[currentLang][key] ?? DICTS.ro[key];
+  if (params) for (const [k, v] of Object.entries(params)) s = s.split(`{${k}}`).join(String(v));
+  return s;
+}
+export const getLang = () => currentLang;
+export const locale = () => LOCALES[currentLang];
+
+interface I18nCtx { lang: Lang; setLang: (l: Lang) => void; t: typeof t }
+const Ctx = createContext<I18nCtx>({ lang: currentLang, setLang: () => {}, t });
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(currentLang);
+  const setLang = useCallback((l: Lang) => {
+    currentLang = l;
+    localStorage.setItem(STORAGE_KEY, l);
+    document.documentElement.lang = l;
+    setLangState(l);
+  }, []);
+  const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang]);
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+export const useI18n = () => useContext(Ctx);
