@@ -42,12 +42,15 @@ export default function Me() {
   const pending = status.rewards.filter((r) => !r.redeemedAt);
   const goalsFor = (k: string) => status.goals.filter((g) => g.counterKey === k).sort((a, b) => a.target - b.target);
   const pointGoals = goalsFor("points");
-  const nextGoal = pointGoals.find((g) => g.target > points) ?? pointGoals.at(-1) ?? { target: 300, reward: t("defReward") };
-  const missing = Math.max(0, nextGoal.target - points);
+  const goal = pointGoals[0] ?? { target: 300, reward: t("defReward") };
+  const nextGoal = goal;
+  const cycles = Math.floor(points / goal.target);
+  const cyclePoints = points % goal.target;
+  const missing = goal.target - cyclePoints;
   const level = user?.level ?? 1;
   const STAMPS = 10;
-  const perStamp = Math.max(1, Math.ceil(nextGoal.target / STAMPS));
-  const stamped = Math.min(STAMPS, Math.floor(points / perStamp));
+  const perStamp = Math.max(1, Math.ceil(goal.target / STAMPS));
+  const stamped = Math.min(STAMPS, Math.floor(cyclePoints / perStamp));
 
   const panel = "rounded-3xl bg-white border border-[#eee3d8] p-6 shadow-sm space-y-4";
   const pill = "inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-3 py-1 text-xs font-bold";
@@ -90,10 +93,10 @@ export default function Me() {
           <div className="flex items-center gap-2 font-black"><TrendingUp className="h-4 w-4 text-primary" /> {t("meNextReward")}</div>
           <div className="text-sm font-semibold text-[#7a6a5c]">{nextGoal.reward}</div>
         </div>
-        <div className="text-3xl font-black">{fmtInt(Math.min(points, nextGoal.target))}<span className="text-[#b8a898]"> / {fmtInt(nextGoal.target)}</span></div>
-        <Progress value={Math.min(100, (100 * points) / nextGoal.target)} className="h-3 bg-[#fde8d3]" />
+        <div className="text-3xl font-black">{fmtInt(cyclePoints)}<span className="text-[#b8a898]"> / {fmtInt(nextGoal.target)}</span></div>
+        <Progress value={(100 * cyclePoints) / nextGoal.target} className="h-3 bg-[#fde8d3]" />
         <div className="text-sm font-semibold text-primary">
-          {missing > 0 ? t("missing", { n: fmtInt(missing), u: t("unitPoints") }) : t("stampDone")}
+          {t("missing", { n: fmtInt(missing), u: t("unitPoints") })}{cycles > 0 && <span className="text-[#9a8a7c]"> · {t("stampCycle", { n: cycles })}</span>}
         </div>
       </section>
 

@@ -65,6 +65,7 @@ export class LocalApi implements LoyaltyApi {
   async signIn() { return this.user(); }
   async signUp() { return this.user(); }
   async signOut() { this.s.currentUserId = DEMO_USERS[1].id; save(this.s); }
+  async updateName(fullName: string) { const u = this.user(); u.name = fullName; return u; }
 
   private stats(l: LotRow): Lot {
     const cs = this.s.codes.filter((c) => c.lotId === l.id);

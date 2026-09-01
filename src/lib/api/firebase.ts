@@ -70,7 +70,7 @@ export class FirebaseApi implements LoyaltyApi {
     const snap = await getDoc(doc(this.db, "profiles", u.uid));
     const d = snap.data();
     this.role = d?.role ?? "student";
-    return { id: u.uid, name: d?.fullName ?? u.displayName ?? u.email ?? "", role: this.role, level: d?.level ?? 1 };
+    return { id: u.uid, name: d?.fullName ?? u.displayName ?? u.email ?? "", role: this.role, level: d?.level ?? 1, email: u.email ?? undefined };
   }
 
   async currentUser(): Promise<User | null> {
@@ -98,6 +98,14 @@ export class FirebaseApi implements LoyaltyApi {
 
   async signOut(): Promise<void> {
     await signOut(this.auth);
+  }
+
+  async updateName(fullName: string): Promise<User> {
+    const u = this.auth.currentUser;
+    if (!u) throw new Error("NOT_AUTHENTICATED");
+    await updateProfile(u, { displayName: fullName });
+    await setDoc(doc(this.db, "profiles", u.uid), { fullName }, { merge: true });
+    return this.profile(u);
   }
 
   async generateLot(i: GenerateLotInput): Promise<Lot> {

@@ -11,6 +11,7 @@ export interface User {
   name: string;
   role: Role;
   level: number;
+  email?: string;
 }
 
 export interface GenerateLotInput {
@@ -156,6 +157,7 @@ export interface LoyaltyApi {
   signIn(email: string, password: string): Promise<User>;
   signUp(email: string, password: string, fullName: string): Promise<User>;
   signOut(): Promise<void>;
+  updateName(fullName: string): Promise<User>;
   demoUsers?(): User[];
   switchDemoUser?(id: string): Promise<User>;
 

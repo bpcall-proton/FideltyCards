@@ -13,6 +13,7 @@ import Redeem from "@/pages/student/Redeem";
 import Me from "@/pages/student/Me";
 import StudentCard from "@/pages/student/Card";
 import Promotions from "@/pages/student/Promotions";
+import Account from "@/pages/Account";
 
 function Routed() {
   const { user, loading } = useAuth();
@@ -25,10 +26,15 @@ function Routed() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Navigate to={home} replace />} />
-        <Route path="/redeem" element={<Redeem />} />
-        <Route path="/me" element={<Me />} />
-        <Route path="/card" element={<StudentCard />} />
-        <Route path="/promotions" element={<Promotions />} />
+        <Route path="/account" element={<Account />} />
+        {!isAdmin && (
+          <>
+            <Route path="/redeem" element={<Redeem />} />
+            <Route path="/me" element={<Me />} />
+            <Route path="/card" element={<StudentCard />} />
+            <Route path="/promotions" element={<Promotions />} />
+          </>
+        )}
         {isAdmin && (
           <>
             <Route path="/admin/generate" element={<Generate />} />
