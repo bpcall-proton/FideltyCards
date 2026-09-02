@@ -51,20 +51,28 @@ async function printEpos(p: Printer, c: IssuedCode, title: string): Promise<void
   }
 }
 
-/** Stampa tramite la finestra di stampa del browser (qualsiasi stampante installata / AirPrint). */
-async function printBrowser(c: IssuedCode, title: string): Promise<void> {
-  const qr = await QRCode.toDataURL(qrPayloadFor(c.code), { margin: 1, width: 300, errorCorrectionLevel: "M" });
+/** Stampa tramite la finestra di stampa del browser (qualsiasi stampante installata / AirPrint): un ticket per pagina. */
+async function printBrowser(list: IssuedCode[], title: string): Promise<void> {
+  const tickets = await Promise.all(list.map(async (c) => {
+    const qr = await QRCode.toDataURL(qrPayloadFor(c.code), { margin: 1, width: 300, errorCorrectionLevel: "M" });
+    return `<section><h1>${esc(title)}</h1><h2>${esc(c.productName)}</h2><img src="${qr}"><div class="code">${esc(c.code)}</div>
+${c.stampTarget ? `<div>1 / ${c.stampTarget}${c.reward ? ` → ${esc(c.reward)}` : ""}</div>` : ""}<small>${new Date().toLocaleString()}</small></section>`;
+  }));
   const w = window.open("", "_blank", "width=420,height=640");
   if (!w) throw new Error("POPUP_BLOCKED");
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(c.code)}</title>
-<style>body{font-family:system-ui,sans-serif;text-align:center;margin:0;padding:12px;width:72mm}h1{font-size:18px;margin:4px 0}h2{font-size:14px;margin:2px 0;font-weight:600}img{width:60mm;height:60mm}.code{font-size:30px;font-weight:900;letter-spacing:3px;font-family:monospace;margin:6px 0}small{color:#555}@media print{@page{margin:4mm}}</style></head>
-<body><h1>${esc(title)}</h1><h2>${esc(c.productName)}</h2><img src="${qr}"><div class="code">${esc(c.code)}</div>
-${c.stampTarget ? `<div>1 / ${c.stampTarget}${c.reward ? ` → ${esc(c.reward)}` : ""}</div>` : ""}<small>${new Date().toLocaleString()}</small>
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(list.map((c) => c.code).join(" "))}</title>
+<style>body{font-family:system-ui,sans-serif;text-align:center;margin:0;padding:0;width:72mm}section{padding:12px;page-break-after:always;break-after:page}section:last-child{page-break-after:auto}h1{font-size:18px;margin:4px 0}h2{font-size:14px;margin:2px 0;font-weight:600}img{width:60mm;height:60mm}.code{font-size:30px;font-weight:900;letter-spacing:3px;font-family:monospace;margin:6px 0}small{color:#555}@media print{@page{margin:4mm}}</style></head>
+<body>${tickets.join("")}
 <script>window.onload=function(){window.print();setTimeout(function(){window.close()},500)}</script></body></html>`);
   w.document.close();
 }
 
-export async function printCode(printer: Printer | undefined, c: IssuedCode, title: string): Promise<void> {
-  if (!printer || printer.type === "browser") return printBrowser(c, title);
-  return printEpos(printer, c, title);
+export async function printCodes(printer: Printer | undefined, list: IssuedCode[], title: string): Promise<void> {
+  if (!list.length) return;
+  if (!printer || printer.type === "browser") return printBrowser(list, title);
+  for (const c of list) await printEpos(printer, c, title);
+}
+
+export function printCode(printer: Printer | undefined, c: IssuedCode, title: string): Promise<void> {
+  return printCodes(printer, [c], title);
 }

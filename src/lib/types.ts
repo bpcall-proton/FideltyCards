@@ -67,6 +67,7 @@ export interface Code {
   usedBy?: string;
   usedAt?: string;
   transactionId?: number | string;
+  printedAt?: string;
 }
 
 export interface Transaction {
@@ -228,6 +229,7 @@ export interface LoyaltyApi {
   cancelCode(code: string): Promise<void>;
   cancelLot(lotId: string): Promise<void>;
   deleteLot(lotId: string): Promise<void>;
+  printNextCodes(lotId: string, count: number): Promise<{ codes: IssuedCode[]; remainingUnprinted: number }>;
   cancelPromotion(promotionId: string): Promise<void>;
   listNotifications(): Promise<AdminNotification[]>;
   getSettings(): Promise<AppSettings>;

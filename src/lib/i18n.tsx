@@ -328,6 +328,8 @@ const ro = {
   prAdd: "Adaugă imprimanta", prDefault: "implicită", prSetDefault: "Setează ca implicită", prTest: "Test", prTestTicket: "BON DE TEST", prTestOk: "Test trimis la imprimantă.",
   prFixHint: "Verifică: telefonul/PC-ul e în aceeași rețea Wi-Fi; ePOS-Print e activat pe imprimantă; apoi deschide adresa imprimantei mai jos și acceptă certificatul (\"Avansat → Continuă\"), apoi reîncearcă Test. Dacă nu merge, folosește tipul \"Imprimare din browser\".",
   prOpenPrinter: "Deschide pagina imprimantei: {u}",
+  lpTitle: "Tipărește codurile lotului", lpHint: "Coduri active netipărite: {n}. Se tipăresc următoarele N coduri, continuând de la ultimul tipărit.", lpPrintN: "Tipărește {n} coduri",
+  lpPrinted: "Tipărite {n} coduri. Mai rămân {r} netipărite.", lpPrintedLast: "Tipărite {n} coduri. Lotul este epuizat: generează un lot nou.", lpExhausted: "Lotul este epuizat: toate codurile au fost tipărite. Generează un lot nou.",
   ldDeleteLot: "ȘTERGE LOTUL", ldDeleting: "Se șterge…", confirmDeleteLot: "Ștergi definitiv lotul #{n} și toate codurile lui? Istoricul utilizărilor rămâne.",
   prEmpty: "Nicio imprimantă configurată: se folosește imprimarea din browser.", prPrinting: "Se tipărește…", prPrintError: "Eroare la tipărire: {e}", prLastPrinted: "Ultimul cod tipărit",
 } as const;
@@ -439,6 +441,8 @@ const it: Dict = {
   prAdd: "Aggiungi stampante", prDefault: "predefinita", prSetDefault: "Imposta come predefinita", prTest: "Test", prTestTicket: "SCONTRINO DI PROVA", prTestOk: "Test inviato alla stampante.",
   prFixHint: "Controlla: telefono/PC nella stessa rete Wi-Fi; ePOS-Print attivo sulla stampante; poi apri l'indirizzo della stampante qui sotto e accetta il certificato (\"Avanzate → Procedi\"), quindi ripeti il Test. Se non funziona usa il tipo \"Stampa dal browser\".",
   prOpenPrinter: "Apri la pagina della stampante: {u}",
+  lpTitle: "Stampa i codici del lotto", lpHint: "Codici attivi non stampati: {n}. Si stampano i prossimi N codici, continuando dall'ultimo stampato.", lpPrintN: "Stampa {n} codici",
+  lpPrinted: "Stampati {n} codici. Ne restano {r} da stampare.", lpPrintedLast: "Stampati {n} codici. Lotto esaurito: genera un nuovo lotto.", lpExhausted: "Lotto esaurito: tutti i codici sono già stati stampati. Genera un nuovo lotto.",
   ldDeleteLot: "ELIMINA LOTTO", ldDeleting: "Eliminazione…", confirmDeleteLot: "Eliminare definitivamente il lotto #{n} e tutti i suoi codici? Lo storico degli utilizzi resta.",
   prEmpty: "Nessuna stampante configurata: si usa la stampa del browser.", prPrinting: "Stampa in corso…", prPrintError: "Errore di stampa: {e}", prLastPrinted: "Ultimo codice stampato",
 };
@@ -547,6 +551,8 @@ const ru: Dict = {
   prAdd: "Добавить принтер", prDefault: "по умолчанию", prSetDefault: "Сделать по умолчанию", prTest: "Тест", prTestTicket: "ТЕСТОВЫЙ ЧЕК", prTestOk: "Тест отправлен на принтер.",
   prFixHint: "Проверьте: телефон/ПК в той же Wi-Fi сети; ePOS-Print включён на принтере; затем откройте адрес принтера ниже и примите сертификат (\"Дополнительно → Перейти\"), после чего повторите Тест. Если не работает, используйте тип \"Печать из браузера\".",
   prOpenPrinter: "Открыть страницу принтера: {u}",
+  lpTitle: "Печать кодов партии", lpHint: "Активных ненапечатанных кодов: {n}. Печатаются следующие N кодов, продолжая с последнего напечатанного.", lpPrintN: "Напечатать {n} кодов",
+  lpPrinted: "Напечатано {n} кодов. Осталось {r} ненапечатанных.", lpPrintedLast: "Напечатано {n} кодов. Партия исчерпана: создайте новую.", lpExhausted: "Партия исчерпана: все коды уже напечатаны. Создайте новую партию.",
   ldDeleteLot: "УДАЛИТЬ ПАРТИЮ", ldDeleting: "Удаление…", confirmDeleteLot: "Удалить партию #{n} и все её коды безвозвратно? История использований сохранится.",
   prEmpty: "Принтеры не настроены: используется печать браузера.", prPrinting: "Печать…", prPrintError: "Ошибка печати: {e}", prLastPrinted: "Последний напечатанный код",
 };

@@ -283,6 +283,47 @@ export const issueCode = onCall(async (req) => {
   throw new HttpsError("internal", "Impossibile generare un codice univoco");
 });
 
+/** Restituisce i prossimi N codici ATTIVI non ancora stampati del lotto e li segna come stampati. */
+export const printNextCodes = onCall(async (req) => {
+  await requireAdmin(req);
+  const lotId = String(req.data?.lotId ?? "");
+  const n = Math.min(200, Math.max(1, Math.floor(Number(req.data?.count) || 1)));
+  const lotRef = db.doc(`lots/${lotId}`);
+  const lotSnap = await lotRef.get();
+  if (!lotSnap.exists || lotSnap.data()?.status !== "ACTIVE") throw new HttpsError("failed-precondition", "Lotto non attivo");
+  const lot = lotSnap.data() as LotDoc;
+  const product = lot.productId ? ((await db.doc(`products/${lot.productId}`).get()).data() as ProductDoc | undefined) : undefined;
+
+  const picked: string[] = [];
+  let remainingUnprinted = 0;
+  let last: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+  for (;;) {
+    let q = db.collection("codes").where("lotId", "==", lotId).where("status", "==", "ACTIVE").orderBy("createdAt").orderBy("__name__").limit(BATCH);
+    if (last) q = q.startAfter(last);
+    const snap = await q.get();
+    if (snap.empty) break;
+    for (const d of snap.docs) {
+      if (d.get("printedAt")) continue;
+      if (picked.length < n) picked.push(d.id);
+      else remainingUnprinted++;
+    }
+    last = snap.docs[snap.docs.length - 1];
+    if (snap.size < BATCH) break;
+  }
+  if (picked.length) {
+    const now = Timestamp.now();
+    const batch = db.batch();
+    picked.forEach((id) => batch.update(db.doc(`codes/${id}`), { printedAt: now }));
+    batch.update(lotRef, { printedCount: FieldValue.increment(picked.length) });
+    await batch.commit();
+  }
+  const productName = product?.name ?? lot.productKey ?? lot.name;
+  return {
+    codes: picked.map((code) => ({ code, lotId, lotName: lot.name, productName, reward: product?.reward ?? null, stampTarget: product?.stampTarget ?? null })),
+    remainingUnprinted,
+  };
+});
+
 // ---------------------------------------------------------------- cancel*
 
 async function cancelLotCodes(lotId: string): Promise<number> {

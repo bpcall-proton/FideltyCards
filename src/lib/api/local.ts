@@ -187,10 +187,26 @@ export class LocalApi implements LoyaltyApi {
     const existing = new Set(this.s.codes.map((c) => c.code));
     let code = randomCode(lot.codeFormat, lot.codeLength);
     while (existing.has(code)) code = randomCode(lot.codeFormat, lot.codeLength);
-    this.s.codes.push({ id: uid(), lotId: lot.id, code, status: "ACTIVE" });
+    this.s.codes.push({ id: uid(), lotId: lot.id, code, status: "ACTIVE", printedAt: new Date().toISOString() });
     lot.totalCodes += 1;
     save(this.s);
     return { code, lotId: lot.id, lotName: lot.name, productName: p?.name ?? lot.productKey ?? lot.name, reward: p?.reward ?? null, stampTarget: p?.stampTarget ?? null };
+  }
+  async printNextCodes(lotId: string, count: number) {
+    this.requireAdmin();
+    const lot = this.s.lots.find((l) => l.id === lotId && l.status === "ACTIVE");
+    if (!lot) throw new Error("LOT_NOT_ACTIVE");
+    const p = lot.productId ? this.s.products.find((x) => x.id === lot.productId) : undefined;
+    const unprinted = this.s.codes.filter((c) => c.lotId === lotId && c.status === "ACTIVE" && !c.printedAt);
+    const picked = unprinted.slice(0, Math.max(1, count));
+    const now = new Date().toISOString();
+    picked.forEach((c) => { c.printedAt = now; });
+    save(this.s);
+    const productName = p?.name ?? lot.productKey ?? lot.name;
+    return {
+      codes: picked.map((c) => ({ code: c.code, lotId, lotName: lot.name, productName, reward: p?.reward ?? null, stampTarget: p?.stampTarget ?? null })),
+      remainingUnprinted: unprinted.length - picked.length,
+    };
   }
   async getPrinters() { return this.s.printers; }
   async savePrinters(s: PrinterSettings) { this.requireAdmin(); this.s.printers = s; save(this.s); }

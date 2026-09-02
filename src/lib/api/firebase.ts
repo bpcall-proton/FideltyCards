@@ -138,7 +138,7 @@ export class FirebaseApi implements LoyaltyApi {
       const snap = await getDocs(cursor ? query(base, startAfter(cursor)) : base);
       for (const d of snap.docs) {
         const r = d.data();
-        out.push({ id: d.id, lotId: r.lotId, code: d.id, status: r.status, usedBy: r.usedBy ?? undefined, usedAt: iso(r.usedAt), transactionId: r.transactionId ?? undefined });
+        out.push({ id: d.id, lotId: r.lotId, code: d.id, status: r.status, usedBy: r.usedBy ?? undefined, usedAt: iso(r.usedAt), transactionId: r.transactionId ?? undefined, printedAt: iso(r.printedAt) });
       }
       if (snap.size < page) break;
       cursor = snap.docs[snap.docs.length - 1];
@@ -169,6 +169,9 @@ export class FirebaseApi implements LoyaltyApi {
   async cancelCode(code: string) { await this.call<{ code: string }, unknown>("cancelCode")({ code }); }
   async cancelLot(lotId: string) { await this.call<{ lotId: string }, unknown>("cancelLot")({ lotId }); }
   async deleteLot(lotId: string) { await this.call<{ lotId: string }, unknown>("deleteLot")({ lotId }); }
+  async printNextCodes(lotId: string, count: number) {
+    return this.call<{ lotId: string; count: number }, { codes: IssuedCode[]; remainingUnprinted: number }>("printNextCodes")({ lotId, count });
+  }
   async cancelPromotion(promotionId: string) { await this.call<{ promotionId: string }, unknown>("cancelPromotion")({ promotionId }); }
 
   async listNotifications(): Promise<AdminNotification[]> {
