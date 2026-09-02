@@ -315,6 +315,18 @@ const ro = {
   exUsagePercent: "Procent utilizare",
   exExpiryNone: "Fără",
   exLotPrefix: "lot",
+  // products & printers
+  navProducts: "Produse", navPrinters: "Imprimante",
+  pdTitle: "Produse premiu", pdSubtitle: "Fiecare produs are cardul său, codurile sale și premiul său (ex. Cafea, Brioșă).",
+  pdName: "Nume produs", pdNamePh: "Cafea", pdAdd: "Adaugă produs", pdList: "Produse active", pdBoxes: "căsuțe",
+  pdPrintCode: "Tipărește un cod", pdDeleteConfirm: "Dezactivezi produsul „{n}”?", pdEmpty: "Niciun produs. Adaugă primul produs mai sus.",
+  pdLotFor: "Produs (card dedicat)", pdLotNone: "— card general —",
+  prsTitle: "Imprimante", prsSubtitle: "Configurează imprimanta de bonuri (Epson TM-m30III prin rețea ePOS) sau folosește imprimarea din browser/sistem.",
+  prName: "Nume", prType: "Tip", prEpos: "Epson ePOS (rețea)", prBrowser: "Imprimare browser / sistem",
+  prHost: "Adresă IP / host", prHostHint: "IP-ul imprimantei în rețeaua locală", prDevice: "Device ID", prSecure: "HTTPS (recomandat; dezactivează dacă imprimanta acceptă doar HTTP)",
+  prEposHelp: "Telefonul/PC-ul trebuie să fie în aceeași rețea Wi-Fi cu imprimanta. Pe imprimantă activează ePOS-Print (Epson TM Utility) și, pentru HTTPS, acceptă o dată certificatul deschizând adresa ei în browser.",
+  prAdd: "Adaugă imprimanta", prDefault: "implicită", prSetDefault: "Setează ca implicită", prTest: "Test", prTestTicket: "BON DE TEST", prTestOk: "Test trimis la imprimantă.",
+  prEmpty: "Nicio imprimantă configurată: se folosește imprimarea din browser.", prPrinting: "Se tipărește…", prPrintError: "Eroare la tipărire: {e}", prLastPrinted: "Ultimul cod tipărit",
 } as const;
 
 export type I18nKey = keyof typeof ro;
@@ -412,6 +424,17 @@ const it: Dict = {
   meNoRewards: "Nessun premio ancora. Continua a raccogliere codici!", meUnlockedOn: "Sbloccato il {d}", meRedeemedOn: "Riscattato {d}",
   meHistory: "Storico codici", meNoHistory: "Nessun codice utilizzato.",
   exSummary: "Riepilogo", exName: "Nome", exUsagePercent: "Percentuale utilizzo", exExpiryNone: "Nessuna", exLotPrefix: "lotto",
+  navProducts: "Prodotti", navPrinters: "Stampanti",
+  pdTitle: "Prodotti premio", pdSubtitle: "Ogni prodotto ha la sua tessera, i suoi codici e il suo premio (es. Caffè, Brioche).",
+  pdName: "Nome prodotto", pdNamePh: "Caffè", pdAdd: "Aggiungi prodotto", pdList: "Prodotti attivi", pdBoxes: "caselle",
+  pdPrintCode: "Stampa un codice", pdDeleteConfirm: "Disattivare il prodotto “{n}”?", pdEmpty: "Nessun prodotto. Aggiungi il primo qui sopra.",
+  pdLotFor: "Prodotto (tessera dedicata)", pdLotNone: "— tessera generale —",
+  prsTitle: "Stampanti", prsSubtitle: "Configura la stampante scontrini (Epson TM-m30III via rete ePOS) oppure usa la stampa del browser/sistema.",
+  prName: "Nome", prType: "Tipo", prEpos: "Epson ePOS (rete)", prBrowser: "Stampa browser / sistema",
+  prHost: "Indirizzo IP / host", prHostHint: "IP della stampante nella rete locale", prDevice: "Device ID", prSecure: "HTTPS (consigliato; disattiva se la stampante accetta solo HTTP)",
+  prEposHelp: "Telefono/PC devono essere nella stessa rete Wi-Fi della stampante. Sulla stampante attiva ePOS-Print (Epson TM Utility) e, per HTTPS, accetta una volta il certificato aprendo il suo indirizzo nel browser.",
+  prAdd: "Aggiungi stampante", prDefault: "predefinita", prSetDefault: "Imposta come predefinita", prTest: "Test", prTestTicket: "SCONTRINO DI PROVA", prTestOk: "Test inviato alla stampante.",
+  prEmpty: "Nessuna stampante configurata: si usa la stampa del browser.", prPrinting: "Stampa in corso…", prPrintError: "Errore di stampa: {e}", prLastPrinted: "Ultimo codice stampato",
 };
 
 const ru: Dict = {
@@ -506,6 +529,17 @@ const ru: Dict = {
   meNoRewards: "Наград пока нет. Продолжайте собирать коды!", meUnlockedOn: "Открыто {d}", meRedeemedOn: "Получено {d}",
   meHistory: "История кодов", meNoHistory: "Кодов не использовано.",
   exSummary: "Сводка", exName: "Название", exUsagePercent: "Процент использования", exExpiryNone: "Нет", exLotPrefix: "partiya",
+  navProducts: "Продукты", navPrinters: "Принтеры",
+  pdTitle: "Продукты-призы", pdSubtitle: "У каждого продукта своя карта, свои коды и свой приз (напр. Кофе, Круассан).",
+  pdName: "Название продукта", pdNamePh: "Кофе", pdAdd: "Добавить продукт", pdList: "Активные продукты", pdBoxes: "клеток",
+  pdPrintCode: "Напечатать код", pdDeleteConfirm: "Отключить продукт «{n}»?", pdEmpty: "Нет продуктов. Добавьте первый выше.",
+  pdLotFor: "Продукт (отдельная карта)", pdLotNone: "— общая карта —",
+  prsTitle: "Принтеры", prsSubtitle: "Настройте чековый принтер (Epson TM-m30III по сети ePOS) или используйте печать браузера/системы.",
+  prName: "Название", prType: "Тип", prEpos: "Epson ePOS (сеть)", prBrowser: "Печать браузера / системы",
+  prHost: "IP-адрес / хост", prHostHint: "IP принтера в локальной сети", prDevice: "Device ID", prSecure: "HTTPS (рекомендуется; отключите, если принтер принимает только HTTP)",
+  prEposHelp: "Телефон/ПК должны быть в той же Wi-Fi сети, что и принтер. На принтере включите ePOS-Print (Epson TM Utility) и для HTTPS один раз примите сертификат, открыв его адрес в браузере.",
+  prAdd: "Добавить принтер", prDefault: "по умолчанию", prSetDefault: "Сделать по умолчанию", prTest: "Тест", prTestTicket: "ТЕСТОВЫЙ ЧЕК", prTestOk: "Тест отправлен на принтер.",
+  prEmpty: "Принтеры не настроены: используется печать браузера.", prPrinting: "Печать…", prPrintError: "Ошибка печати: {e}", prLastPrinted: "Последний напечатанный код",
 };
 
 const DICTS: Record<Lang, Dict> = { ro, it, ru };

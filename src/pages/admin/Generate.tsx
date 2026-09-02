@@ -1,10 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Download, FileSpreadsheet, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { exportExcel, exportPdfQr, exportPdfTable } from "@/lib/export";
-import { describeValue, type CodeFormat, type GenerateLotInput, type Lot, type ValueType, valueTypeLabel } from "@/lib/types";
+import { describeValue, type CodeFormat, type GenerateLotInput, type Lot, type Product, type ValueType, valueTypeLabel } from "@/lib/types";
 import { fmtInt } from "@/lib/utils";
 import { Button, buttonVariants, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Select } from "@/components/ui";
 
@@ -18,6 +18,9 @@ export default function Generate() {
   const [valueType, setValueType] = useState<ValueType>("points");
   const [valueAmount, setValueAmount] = useState(10);
   const [productKey, setProductKey] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productId, setProductId] = useState("");
+  useEffect(() => { void api.listProducts().then((p) => setProducts(p.filter((x) => x.active))).catch(() => setProducts([])); }, []);
   const [promotionId, setPromotionId] = useState("");
   const [quantity, setQuantity] = useState(5000);
   const [customQty, setCustomQty] = useState(false);
@@ -58,6 +61,7 @@ export default function Generate() {
       codeFormat: alnum && withQr ? "alphanumeric" : codeFormat,
       codeLength,
       productKey: isQtyType ? productKey.trim() : undefined,
+      productId: productId || undefined,
       promotionId: valueType === "promotion" && promotionId.trim() ? promotionId.trim() : undefined,
       validFrom: expiryMode === "range" && validFrom ? new Date(validFrom).toISOString() : undefined,
       expiresAt: expiryMode !== "none" && expiresAt ? new Date(expiresAt + "T23:59:59").toISOString() : undefined,
@@ -122,6 +126,15 @@ export default function Generate() {
           <Field label={t("genLotName")}>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("genLotNamePh")} required />
           </Field>
+
+          {products.length > 0 && (
+            <Field label={t("pdLotFor")}>
+              <Select value={productId} onChange={(e) => { const id = e.target.value; setProductId(id); const p = products.find((x) => x.id === id); if (p) { setValueType("product"); setValueAmount(1); setProductKey(p.name); } }}>
+                <option value="">{t("pdLotNone")}</option>
+                {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.stampTarget} → {p.reward})</option>)}
+              </Select>
+            </Field>
+          )}
 
           <Field label={t("genType")}>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">

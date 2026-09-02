@@ -9,7 +9,7 @@ import {
 } from "firebase/firestore";
 import { getFunctions, httpsCallable, type Functions } from "firebase/functions";
 import type {
-  AdminNotification, AppSettings, Code, GenerateLotInput, Goal, Lot, LoyaltyApi, Promotion, RedeemResult, StudentStatus, Transaction, User,
+  AdminNotification, AppSettings, Code, GenerateLotInput, Goal, IssuedCode, Lot, LoyaltyApi, Printer, PrinterSettings, Product, Promotion, RedeemResult, StudentStatus, Transaction, User,
 } from "../types";
 import { DEFAULT_SETTINGS, STAMPS_KEY } from "../types";
 import { activePromotions } from "../promotions";
@@ -24,6 +24,7 @@ const mapLot = (r: DocumentData): Lot => ({
   valueType: r.valueType,
   valueAmount: r.valueAmount,
   productKey: r.productKey ?? undefined,
+  productId: r.productId ?? undefined,
   promotionId: r.promotionId ?? undefined,
   codeFormat: r.codeFormat,
   codeLength: r.codeLength,
@@ -42,6 +43,8 @@ const mapLot = (r: DocumentData): Lot => ({
   cancelledCount: Number(r.cancelledCount ?? 0),
   usagePercent: Number(r.usagePercent ?? 0),
 });
+
+const mapProduct = (id: string, p: DocumentData): Product => ({ id, name: p.name, stampTarget: Number(p.stampTarget ?? 10), reward: p.reward ?? "", active: p.active !== false });
 
 const mapGoal = (id: string, g: DocumentData): Goal => ({ id, name: g.name, counterKey: g.counterKey, target: g.target, reward: g.reward });
 
@@ -214,6 +217,28 @@ export class FirebaseApi implements LoyaltyApi {
 
   async deleteGoal(id: string) { await deleteDoc(doc(this.db, "goals", id)); }
 
+  async listProducts(): Promise<Product[]> {
+    const snap = await getDocs(query(collection(this.db, "products"), orderBy("createdAt")));
+    return snap.docs.map((d) => mapProduct(d.id, d.data()));
+  }
+  async saveProduct(p: Omit<Product, "id"> & { id?: string }) {
+    const row = { name: p.name, stampTarget: p.stampTarget, reward: p.reward, active: p.active };
+    if (p.id) await updateDoc(doc(this.db, "products", p.id), row);
+    else await addDoc(collection(this.db, "products"), { ...row, printLotId: null, createdAt: Timestamp.now() });
+  }
+  async deleteProduct(id: string) { await updateDoc(doc(this.db, "products", id), { active: false }); }
+  async issueCode(input: { productId?: string; lotId?: string }): Promise<IssuedCode> {
+    return this.call<{ productId?: string; lotId?: string }, IssuedCode>("issueCode")(input);
+  }
+  async getPrinters(): Promise<PrinterSettings> {
+    const snap = await getDoc(doc(this.db, "settings", "printers"));
+    const d = snap.data();
+    return { printers: Array.isArray(d?.printers) ? (d!.printers as Printer[]) : [], defaultId: d?.defaultId ?? undefined };
+  }
+  async savePrinters(s: PrinterSettings) {
+    await setDoc(doc(this.db, "settings", "printers"), { printers: s.printers, defaultId: s.defaultId ?? null });
+  }
+
   async redeemCode(code: string, deviceId?: string): Promise<RedeemResult> {
     return this.call<{ code: string; deviceId?: string }, RedeemResult>("redeemCode")({ code, deviceId });
   }
@@ -221,11 +246,12 @@ export class FirebaseApi implements LoyaltyApi {
   async myStatus(): Promise<StudentStatus> {
     const u = this.auth.currentUser;
     if (!u) throw new Error("NOT_AUTHENTICATED");
-    const [counters, goals, rewards, app] = await Promise.all([
+    const [counters, goals, rewards, app, products] = await Promise.all([
       getDoc(doc(this.db, "counters", u.uid)),
       getDocs(query(collection(this.db, "goals"), where("active", "==", true), orderBy("target"))),
       getDocs(query(collection(this.db, "rewards"), where("studentId", "==", u.uid), orderBy("unlockedAt", "desc"))),
       getDoc(doc(this.db, "settings", "app")),
+      getDocs(query(collection(this.db, "products"), where("active", "==", true))),
     ]);
     const c: Record<string, number> = {};
     for (const [k, v] of Object.entries(counters.data() ?? {})) if (typeof v === "number") c[k] = v;
@@ -233,10 +259,11 @@ export class FirebaseApi implements LoyaltyApi {
     return {
       counters: c,
       goals: allGoals.filter((g) => g.counterKey !== STAMPS_KEY),
+      products: products.docs.map((d) => mapProduct(d.id, d.data())),
       settings: this.settingsFrom(app.data(), allGoals),
       rewards: rewards.docs.map((d) => {
         const r = d.data();
-        return { id: d.id, reward: r.reward, unlockedAt: iso(r.unlockedAt) ?? "", requestedAt: iso(r.requestedAt), redeemedAt: iso(r.redeemedAt), expiresAt: iso(r.expiresAt) };
+        return { id: d.id, reward: r.reward, productId: r.productId ?? undefined, unlockedAt: iso(r.unlockedAt) ?? "", requestedAt: iso(r.requestedAt), redeemedAt: iso(r.redeemedAt), expiresAt: iso(r.expiresAt) };
       }),
     };
   }
