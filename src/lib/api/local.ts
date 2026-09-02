@@ -238,8 +238,26 @@ export class LocalApi implements LoyaltyApi {
   async saveSettings(s: AppSettings) { this.requireAdmin(); this.s.settings = s; save(this.s); }
   async listPromotions(): Promise<Promotion[]> { return activePromotions(this.s.lots); }
   async redeemReward(id: string) {
-    const r = (this.s.rewards[this.user().id] ?? []).find((x) => x.id === id);
-    if (r && !r.redeemedAt && !isRewardExpired(r)) r.redeemedAt = new Date().toISOString();
+    const me = this.user();
+    const r = (this.s.rewards[me.id] ?? []).find((x) => x.id === id);
+    if (r && !r.redeemedAt && !r.requestedAt && !isRewardExpired(r)) {
+      const now = new Date().toISOString();
+      r.requestedAt = now;
+      this.s.notifications.push({
+        id: uid(), type: "REWARD_REQUEST", title: "RICHIESTA PREMIO", createdAt: now,
+        body: { reward_id: id, student_id: me.id, student_name: me.name, reward: r.reward, date: now },
+      });
+    }
+    save(this.s);
+  }
+  async confirmReward(id: string) {
+    this.requireAdmin();
+    const r = Object.values(this.s.rewards).flat().find((x) => x.id === id);
+    if (r && r.requestedAt && !r.redeemedAt) {
+      const now = new Date().toISOString();
+      r.redeemedAt = now;
+      this.s.notifications.filter((n) => n.body.reward_id === id).forEach((n) => { n.readAt = now; });
+    }
     save(this.s);
   }
 }

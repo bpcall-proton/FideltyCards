@@ -96,6 +96,8 @@ export interface UnlockedReward {
   id: string;
   reward: string;
   unlockedAt: string;
+  /** studente ha premuto RISCATTA; in attesa di conferma admin */
+  requestedAt?: string;
   redeemedAt?: string;
   expiresAt?: string;
 }
@@ -122,7 +124,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = { stampTarget: 10, stampReward: "", showPointsCard: false, rewardExpiryDays: 0 };
 
-export const isRewardExpired = (r: UnlockedReward, now = Date.now()) => !r.redeemedAt && !!r.expiresAt && new Date(r.expiresAt).getTime() <= now;
+export const isRewardExpired = (r: UnlockedReward, now = Date.now()) => !r.redeemedAt && !r.requestedAt && !!r.expiresAt && new Date(r.expiresAt).getTime() <= now;
 
 export interface StudentStatus {
   counters: Record<string, number>;
@@ -196,6 +198,7 @@ export interface LoyaltyApi {
   myStatus(): Promise<StudentStatus>;
   listPromotions(): Promise<Promotion[]>;
   redeemReward(id: string): Promise<void>;
+  confirmReward(id: string): Promise<void>;
 }
 
 const REDEEM_ERROR_KEYS: Record<RedeemError, I18nKey> = {

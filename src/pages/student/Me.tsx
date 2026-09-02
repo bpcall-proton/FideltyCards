@@ -55,7 +55,8 @@ export default function Me() {
   const stampReward = settings.stampReward || t("defReward");
   const stampsTotal = status.counters[STAMPS_KEY] ?? 0;
   const stampCycles = Math.floor(stampsTotal / STAMPS);
-  const stamped = stampsTotal % STAMPS;
+  const cardFull = pending.length > 0 && stampsTotal % STAMPS === 0 && stampsTotal > 0;
+  const stamped = cardFull ? STAMPS : stampsTotal % STAMPS;
   const stampCols = STAMPS <= 6 ? STAMPS : 5;
 
   const panel = "rounded-3xl bg-white border border-[#eee3d8] p-6 shadow-sm space-y-4";
@@ -122,14 +123,24 @@ export default function Me() {
             <div className="flex items-center gap-2 font-black text-primary"><Gift className="h-5 w-5" /> {t("rwEntitled")}</div>
             <div className="text-2xl font-black">🎁 {r.reward}</div>
             {r.expiresAt && <div className="text-sm font-bold text-red-600">{t("rwUntil", { d: fmtDate(r.expiresAt) })}</div>}
-            <p className="text-sm text-[#7a6a5c]">{t("rwShowCashier")}</p>
-            {confirmId === r.id ? (
-              <div className="flex gap-2">
-                <Button className="flex-1 font-bold" disabled={busy} onClick={async () => { setBusy(true); try { await api.redeemReward(r.id); await reload(); } finally { setBusy(false); setConfirmId(null); } }}>{t("rwConfirm")}</Button>
-                <Button variant="outline" onClick={() => setConfirmId(null)}>{t("rwLater")}</Button>
+            {r.requestedAt ? (
+              <div className="rounded-xl bg-amber-100 text-amber-900 p-3 text-sm space-y-1">
+                <div className="font-black animate-pulse">⏳ {t("rwWaiting")}</div>
+                <div>{t("rwWaitingHint")}</div>
+              </div>
+            ) : confirmId === r.id ? (
+              <div className="space-y-2">
+                <p className="text-sm font-bold text-red-600">{t("rwIrreversible")}</p>
+                <div className="flex gap-2">
+                  <Button className="flex-1 font-bold" disabled={busy} onClick={async () => { setBusy(true); try { await api.redeemReward(r.id); await reload(); } finally { setBusy(false); setConfirmId(null); } }}>{t("rwConfirm")}</Button>
+                  <Button variant="outline" onClick={() => setConfirmId(null)}>{t("rwLater")}</Button>
+                </div>
               </div>
             ) : (
-              <Button size="lg" className="w-full font-bold" onClick={() => setConfirmId(r.id)}>{t("rdRedeem")}</Button>
+              <>
+                <p className="text-sm text-[#7a6a5c]">{t("rwShowCashier")}</p>
+                <Button size="lg" className="w-full font-bold" onClick={() => setConfirmId(r.id)}>{t("rdRedeem")}</Button>
+              </>
             )}
           </div>
         ))}
@@ -171,7 +182,7 @@ export default function Me() {
                 <div className="font-bold">🎁 {r.reward}</div>
                 <div className="text-xs text-muted-foreground">{t("meUnlockedOn", { d: fmtDateTime(r.unlockedAt) })}{r.expiresAt && ` · ${t("rwUntil", { d: fmtDate(r.expiresAt) })}`}</div>
               </div>
-              <Button size="sm" onClick={async () => { await api.redeemReward(r.id); await load(); }}>{t("rdRedeem")}</Button>
+              {r.requestedAt && <Badge variant="secondary">{t("rwRequestedOn", { d: fmtDateTime(r.requestedAt) })}</Badge>}
             </div>
           ))}
           {status.rewards.filter((r) => r.redeemedAt).map((r) => (

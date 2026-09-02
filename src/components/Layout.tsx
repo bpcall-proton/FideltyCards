@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { Button, Select } from "./ui";
 import { cn } from "@/lib/utils";
 import { LANGS, useI18n, type I18nKey, type Lang } from "@/lib/i18n";
+import { RewardRequestPopup } from "@/pages/admin/Notifications";
 
 const adminNav: { to: string; label: I18nKey; icon: typeof Bell }[] = [
   { to: "/admin/generate", label: "navGenerate", icon: PlusCircle },
@@ -151,6 +152,7 @@ function AdminLayout() {
       <main className="container flex-1 px-4 py-6">
         <Outlet />
       </main>
+      {user?.role === "admin" && <RewardRequestPopup />}
       {api.mode === "demo" && (
         <footer className="text-center text-xs text-muted-foreground py-3">
           {t("demoFooter")}
