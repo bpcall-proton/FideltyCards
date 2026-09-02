@@ -96,6 +96,10 @@ const ro = {
   rwEntitled: "AI DREPTUL LA:",
   rwShowCashier: "Arată ecranul la casă. Vânzătoarea confirmă și apoi apeși REVENDICĂ: premiul se marchează consumat.",
   rwConfirm: "Confirmă — premiu primit",
+  rwUntil: "De ridicat până la {d}",
+  rwExpiredOn: "Expirat la {d}",
+  stExpiry: "Zile pentru ridicarea premiului",
+  stExpiryHint: "0 = fără expirare. După termen premiul se pierde.",
 
   // login
   loginFullName: "Nume și prenume",
@@ -105,6 +109,18 @@ const ro = {
   loginSignUp: "Înregistrare",
   loginNoAccount: "Nu ai cont? Înregistrează-te",
   loginHaveAccount: "Ai deja cont? Autentifică-te",
+  lpTag: "CARD DE FIDELITATE DIGITAL",
+  lpHero: "Cardul tău de fidelitate, direct pe telefon.",
+  lpSub: "Fără carduri de hârtie, fără ștampile pierdute. Fiecare cumpărătură îți aduce un cod unic care marchează o căsuță pe cardul virtual.",
+  lpHow: "CUM FUNCȚIONEAZĂ",
+  lpS1t: "Cumperi", lpS1d: "La casă primești un cod unic (sau un cod QR) împreună cu produsul.",
+  lpS2t: "Introduci codul", lpS2d: "Deschizi aplicația, tastezi codul sau scanezi QR-ul. Codul e valabil o singură dată.",
+  lpS3t: "Căsuța se marchează", lpS3d: "Cardul tău virtual se ștampilează instant. Vezi oricând câte căsuțe mai ai până la premiu.",
+  lpS4t: "Premiul tău", lpS4d: "Când cardul e plin, primești premiul: îl arăți la casă, apeși REVENDICĂ și un card nou pornește de la zero.",
+  lpF1: "Coduri unice, sigure, imposibil de refolosit",
+  lpF2: "Cardul se actualizează în timp real",
+  lpF3: "Istoric complet al codurilor și premiilor",
+  lpF4: "Disponibil în română, italiană și rusă",
   signUpIncomplete: "Înregistrare incompletă: verifică emailul de confirmare.",
 
   // value types / formats
@@ -311,6 +327,7 @@ const it: Dict = {
   meNextReward: "PROSSIMO PREMIO", meStampMissing: "Manca: {n} {p} per {r}",
   stampTitle: "LA MIA TESSERA FEDELTÀ", stampHint: "Ogni codice = un timbro. Mancano {n} per: {r}",
   rwEntitled: "HAI DIRITTO A:", rwShowCashier: "Mostra lo schermo in cassa. La venditrice conferma e poi premi RISCATTA: il premio viene segnato come consumato.", rwConfirm: "Conferma — premio ricevuto",
+  rwUntil: "Da ritirare entro il {d}", rwExpiredOn: "Scaduto il {d}", stExpiry: "Giorni per ritirare il premio", stExpiryHint: "0 = nessuna scadenza. Passato il termine il premio si perde.",
   stTitle: "Tessera fedeltà", stSubtitle: "Ogni codice inserito marca una casella. A tessera piena il premio si sblocca e la tessera riparte da zero.", stTarget: "Caselle sulla tessera", stTargetHint: "Numero di codici per una tessera completa", stReward: "Premio a tessera completa", stShowPoints: "Mostra agli studenti anche la tessera punti (opzionale, per altri concorsi)", stampDone: "Tessera completa! Mostrala in cassa.", defReward: "Caffè gratis", defCoffee: "Caffè consumati",
   navAccount: "Account", acTitle: "Il mio account", acName: "Nome", acEmail: "Email", acRole: "Ruolo", acRoleAdmin: "Amministratore", acRoleStudent: "Studente", acLevel: "Livello", acLang: "Lingua dell'app", acLogout: "Esci dall'account", acSaved: "Salvato", acSave: "Salva", stampCycle: "Tessera completata {n} volte",
   howTitle: "COME FUNZIONA",
@@ -328,6 +345,18 @@ const it: Dict = {
   rwTitle: "🎁 Hai un premio da riscattare!", rwBody: "Mostra questa schermata alla cassa e premi RISCATTA.", rwLater: "Più tardi",
   loginFullName: "Nome e cognome", loginEmail: "Email", loginPassword: "Password", loginSignIn: "Accedi", loginSignUp: "Registrati",
   loginNoAccount: "Non hai un account? Registrati", loginHaveAccount: "Hai già un account? Accedi",
+  lpTag: "TESSERA FEDELTÀ DIGITALE",
+  lpHero: "La tua tessera fedeltà, direttamente sul telefono.",
+  lpSub: "Niente tessere di carta, niente timbri persi. Ogni acquisto ti dà un codice unico che marca una casella sulla tessera virtuale.",
+  lpHow: "COME FUNZIONA",
+  lpS1t: "Acquisti", lpS1d: "In cassa ricevi un codice unico (o un QR) insieme al prodotto.",
+  lpS2t: "Inserisci il codice", lpS2d: "Apri l'app, digiti il codice o scansioni il QR. Il codice vale una sola volta.",
+  lpS3t: "La casella si timbra", lpS3d: "La tessera virtuale si timbra all'istante. Vedi sempre quante caselle mancano al premio.",
+  lpS4t: "Il tuo premio", lpS4d: "A tessera piena ricevi il premio: lo mostri in cassa, premi RISCATTA e una nuova tessera riparte da zero.",
+  lpF1: "Codici unici, sicuri, non riutilizzabili",
+  lpF2: "Tessera aggiornata in tempo reale",
+  lpF3: "Storico completo di codici e premi",
+  lpF4: "Disponibile in rumeno, italiano e russo",
   signUpIncomplete: "Registrazione non completata: controlla l'email di conferma.",
   vtPoints: "Punti", vtQuantity: "Quantità prodotto", vtBonus: "Bonus", vtProduct: "Prodotto", vtPromotion: "Promozione",
   cfNumeric: "Solo numerico", cfAlphanumeric: "Alfanumerico", cfQr: "QR Code", cfNumericQr: "Numerico + QR",
@@ -387,6 +416,7 @@ const ru: Dict = {
   meNextReward: "СЛЕДУЮЩАЯ НАГРАДА", meStampMissing: "Не хватает: {n} {p} до {r}",
   stampTitle: "МОЯ КАРТА ЛОЯЛЬНОСТИ", stampHint: "Каждый код = один штамп. Осталось {n} до: {r}",
   rwEntitled: "ВАМ ПОЛОЖЕНО:", rwShowCashier: "Покажите экран на кассе. Продавец подтверждает, затем нажмите ПОЛУЧИТЬ: награда отмечается как использованная.", rwConfirm: "Подтвердить — награда получена",
+  rwUntil: "Забрать до {d}", rwExpiredOn: "Истекла {d}", stExpiry: "Дней на получение награды", stExpiryHint: "0 = без срока. После срока награда теряется.",
   stTitle: "Карта лояльности", stSubtitle: "Каждый введённый код отмечает клетку. При полной карте награда открывается, и карта начинается заново.", stTarget: "Клеток на карте", stTargetHint: "Количество кодов для полной карты", stReward: "Награда за полную карту", stShowPoints: "Показывать студентам также карту баллов (опционально, для других конкурсов)", stampDone: "Карта заполнена! Покажите на кассе.", defReward: "Бесплатный кофе", defCoffee: "Выпито кофе",
   navAccount: "Аккаунт", acTitle: "Мой аккаунт", acName: "Имя", acEmail: "Email", acRole: "Роль", acRoleAdmin: "Администратор", acRoleStudent: "Студент", acLevel: "Уровень", acLang: "Язык приложения", acLogout: "Выйти из аккаунта", acSaved: "Сохранено", acSave: "Сохранить", stampCycle: "Карта заполнена {n} раз",
   howTitle: "КАК ЭТО РАБОТАЕТ",
@@ -404,6 +434,18 @@ const ru: Dict = {
   rwTitle: "🎁 У вас есть награда!", rwBody: "Покажите этот экран на кассе и нажмите ПОЛУЧИТЬ.", rwLater: "Позже",
   loginFullName: "Имя и фамилия", loginEmail: "Email", loginPassword: "Пароль", loginSignIn: "Войти", loginSignUp: "Регистрация",
   loginNoAccount: "Нет аккаунта? Зарегистрируйтесь", loginHaveAccount: "Уже есть аккаунт? Войти",
+  lpTag: "ЦИФРОВАЯ КАРТА ЛОЯЛЬНОСТИ",
+  lpHero: "Ваша карта лояльности — прямо в телефоне.",
+  lpSub: "Без бумажных карт и потерянных штампов. Каждая покупка даёт уникальный код, который отмечает клетку на виртуальной карте.",
+  lpHow: "КАК ЭТО РАБОТАЕТ",
+  lpS1t: "Покупаете", lpS1d: "На кассе вместе с товаром вы получаете уникальный код (или QR).",
+  lpS2t: "Вводите код", lpS2d: "Откройте приложение, введите код или отсканируйте QR. Код действует один раз.",
+  lpS3t: "Клетка отмечается", lpS3d: "Виртуальная карта штампуется мгновенно. Всегда видно, сколько клеток до награды.",
+  lpS4t: "Ваша награда", lpS4d: "Когда карта заполнена, вы получаете награду: покажите на кассе, нажмите ПОЛУЧИТЬ — и новая карта начнётся с нуля.",
+  lpF1: "Уникальные, защищённые, одноразовые коды",
+  lpF2: "Карта обновляется в реальном времени",
+  lpF3: "Полная история кодов и наград",
+  lpF4: "Доступно на румынском, итальянском и русском",
   signUpIncomplete: "Регистрация не завершена: проверьте письмо с подтверждением.",
   vtPoints: "Баллы", vtQuantity: "Количество товара", vtBonus: "Бонус", vtProduct: "Товар", vtPromotion: "Акция",
   cfNumeric: "Только цифры", cfAlphanumeric: "Буквенно-цифровой", cfQr: "QR-код", cfNumericQr: "Цифры + QR",
@@ -452,7 +494,15 @@ const DICTS: Record<Lang, Dict> = { ro, it, ru };
 
 function readLang(): Lang {
   const v = localStorage.getItem(STORAGE_KEY);
-  return v === "it" || v === "ru" || v === "ro" ? v : DEFAULT_LANG;
+  if (v === "it" || v === "ru" || v === "ro") return v;
+  const sys = [...(navigator.languages ?? []), navigator.language]
+    .map((l) => (l ?? "").toLowerCase().split("-")[0]);
+  for (const s of sys) {
+    if (s === "ro" || s === "mo") return "ro";
+    if (s === "it") return "it";
+    if (s === "ru") return "ru";
+  }
+  return DEFAULT_LANG;
 }
 
 let currentLang: Lang = readLang();

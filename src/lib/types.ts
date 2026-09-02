@@ -97,6 +97,7 @@ export interface UnlockedReward {
   reward: string;
   unlockedAt: string;
   redeemedAt?: string;
+  expiresAt?: string;
 }
 
 export interface Promotion {
@@ -115,9 +116,13 @@ export interface AppSettings {
   stampTarget: number;
   stampReward: string;
   showPointsCard: boolean;
+  /** giorni per ritirare il premio; 0 = nessuna scadenza */
+  rewardExpiryDays: number;
 }
 
-export const DEFAULT_SETTINGS: AppSettings = { stampTarget: 10, stampReward: "", showPointsCard: false };
+export const DEFAULT_SETTINGS: AppSettings = { stampTarget: 10, stampReward: "", showPointsCard: false, rewardExpiryDays: 0 };
+
+export const isRewardExpired = (r: UnlockedReward, now = Date.now()) => !r.redeemedAt && !!r.expiresAt && new Date(r.expiresAt).getTime() <= now;
 
 export interface StudentStatus {
   counters: Record<string, number>;

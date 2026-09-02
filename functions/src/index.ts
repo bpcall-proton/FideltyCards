@@ -333,10 +333,13 @@ export const redeemCode = onCall(async (req) => {
     }
 
     const goalsCol = db.collection("goals").where("active", "==", true);
-    const [goalsSnap, stampGoalsSnap] = await Promise.all([
+    const [goalsSnap, stampGoalsSnap, appSnap] = await Promise.all([
       t.get(goalsCol.where("counterKey", "==", counterKey)),
       t.get(goalsCol.where("counterKey", "==", STAMPS_KEY)),
+      t.get(db.doc("settings/app")),
     ]);
+    const expiryDays = Number(appSnap.data()?.rewardExpiryDays ?? 0);
+    const rewardExpiresAt = expiryDays > 0 ? Timestamp.fromMillis(now.toMillis() + expiryDays * 86_400_000) : null;
     const counterRef = db.doc(`counters/${student}`);
     const counterSnap = await t.get(counterRef);
     const oldVal = Number(counterSnap.data()?.[counterKey] ?? 0);
@@ -380,7 +383,7 @@ export const redeemCode = onCall(async (req) => {
     ];
     for (const { id, goal, oldV, newV } of checks) {
       if (goal.target > 0 && Math.floor(newV / goal.target) > Math.floor(oldV / goal.target)) {
-        t.create(db.collection("rewards").doc(), { studentId: student, goalId: id, goalName: goal.name, reward: goal.reward, unlockedAt: now, redeemedAt: null });
+        t.create(db.collection("rewards").doc(), { studentId: student, goalId: id, goalName: goal.name, reward: goal.reward, unlockedAt: now, redeemedAt: null, expiresAt: rewardExpiresAt });
         t.create(db.collection("notifications").doc(), {
           type: "GOAL_REACHED",
           title: "OBIETTIVO RAGGIUNTO",
@@ -419,6 +422,8 @@ export const redeemReward = onCall(async (req) => {
     const snap = await t.get(ref);
     if (!snap.exists || snap.data()?.studentId !== student) throw new HttpsError("not-found", "Premio non trovato");
     if (snap.data()?.redeemedAt) throw new HttpsError("failed-precondition", "Premio già riscattato");
+    const exp = snap.data()?.expiresAt as Timestamp | null | undefined;
+    if (exp && exp.toMillis() <= Date.now()) throw new HttpsError("failed-precondition", "REWARD_EXPIRED");
     t.update(ref, { redeemedAt: Timestamp.now() });
   });
   return { ok: true };

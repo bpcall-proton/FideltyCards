@@ -53,6 +53,9 @@ export default function Goals() {
             <Field label={t("stReward")}>
               <Input value={settings.stampReward} onChange={(e) => setSettings({ ...settings, stampReward: e.target.value })} placeholder={t("goalRewardPh")} required />
             </Field>
+            <Field label={t("stExpiry")} hint={t("stExpiryHint")}>
+              <Input type="number" min={0} max={365} value={settings.rewardExpiryDays} onChange={(e) => setSettings({ ...settings, rewardExpiryDays: Math.max(0, Math.round(Number(e.target.value) || 0)) })} />
+            </Field>
             <label className="col-span-2 flex items-center gap-2 text-sm">
               <input type="checkbox" className="h-4 w-4" checked={settings.showPointsCard} onChange={(e) => setSettings({ ...settings, showPointsCard: e.target.checked })} />
               {t("stShowPoints")}
@@ -61,7 +64,7 @@ export default function Goals() {
           </form>
         </CardContent>
       </Card>
-      <Card>
+      {settings.showPointsCard && <Card>
         <CardHeader>
           <CardTitle>{t("goalsTitle")}</CardTitle>
           <CardDescription>{t("goalsSubtitle")}</CardDescription>
@@ -75,8 +78,8 @@ export default function Goals() {
             <Button type="submit" className="col-span-2">{t("goalAdd")}</Button>
           </form>
         </CardContent>
-      </Card>
-      <Card>
+      </Card>}
+      {settings.showPointsCard && <Card>
         <CardContent className="pt-4 divide-y">
           {goals.map((g) => (
             <div key={g.id} className="flex items-center justify-between py-2 text-sm">
@@ -89,7 +92,7 @@ export default function Goals() {
           ))}
           {goals.length === 0 && <p className="text-sm text-muted-foreground">{t("goalsEmpty")}</p>}
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }
