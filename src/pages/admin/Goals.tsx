@@ -64,7 +64,7 @@ export default function Goals() {
           </form>
         </CardContent>
       </Card>
-      <Card>
+      {settings.showPointsCard && <Card>
         <CardHeader>
           <CardTitle>{t("goalsTitle")}</CardTitle>
           <CardDescription>{t("goalsSubtitle")}</CardDescription>
@@ -78,8 +78,8 @@ export default function Goals() {
             <Button type="submit" className="col-span-2">{t("goalAdd")}</Button>
           </form>
         </CardContent>
-      </Card>
-      <Card>
+      </Card>}
+      {settings.showPointsCard && <Card>
         <CardContent className="pt-4 divide-y">
           {goals.map((g) => (
             <div key={g.id} className="flex items-center justify-between py-2 text-sm">
@@ -92,7 +92,7 @@ export default function Goals() {
           ))}
           {goals.length === 0 && <p className="text-sm text-muted-foreground">{t("goalsEmpty")}</p>}
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }
