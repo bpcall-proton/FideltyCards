@@ -494,7 +494,15 @@ const DICTS: Record<Lang, Dict> = { ro, it, ru };
 
 function readLang(): Lang {
   const v = localStorage.getItem(STORAGE_KEY);
-  return v === "it" || v === "ru" || v === "ro" ? v : DEFAULT_LANG;
+  if (v === "it" || v === "ru" || v === "ro") return v;
+  const sys = [...(navigator.languages ?? []), navigator.language]
+    .map((l) => (l ?? "").toLowerCase().split("-")[0]);
+  for (const s of sys) {
+    if (s === "ro" || s === "mo") return "ro";
+    if (s === "it") return "it";
+    if (s === "ru") return "ru";
+  }
+  return DEFAULT_LANG;
 }
 
 let currentLang: Lang = readLang();
