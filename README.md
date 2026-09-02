@@ -44,3 +44,21 @@ Tutte le scritture su lotti/codici/transazioni/contatori passano **esclusivament
 - I codici non vengono mai cancellati: stati `ACTIVE / USED / EXPIRED / CANCELLED` + storico in `transactions` con numero progressivo.
 - Le regole Firestore negano ogni scrittura client su codici/lotti/transazioni/contatori; gli studenti non possono leggere `codes`.
 - Codici generati con CSPRNG (`crypto.randomBytes`), mai sequenziali; la lunghezza minima è vincolata alla quantità richiesta.
+
+## App mobile (Capacitor)
+
+La web app è impacchettata con [Capacitor](https://capacitorjs.com) (`capacitor.config.ts`, cartelle `android/` e `ios/`).
+
+### Android (APK)
+Requisiti: JDK 17, Android SDK (platform 34, build-tools 34).
+```bash
+npm run android:apk   # → android/app/build/outputs/apk/debug/app-debug.apk
+```
+Per il Play Store: creare un keystore e configurare `signingConfigs.release` in `android/app/build.gradle`, poi `./gradlew bundleRelease`.
+
+### iOS
+Serve un Mac con Xcode e un account Apple Developer.
+```bash
+npm run ios:open      # apre ios/App/App.xcworkspace in Xcode
+```
+In Xcode: Signing & Capabilities → seleziona il Team → Product → Archive → Distribute (TestFlight / App Store).
