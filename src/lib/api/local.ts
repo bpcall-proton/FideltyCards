@@ -3,7 +3,7 @@ import type {
   AdminNotification, AppSettings, Code, GenerateLotInput, Goal, Lot, LoyaltyApi, Promotion, RedeemResult,
   StudentStatus, Transaction, UnlockedReward, User,
 } from "../types";
-import { DEFAULT_SETTINGS, STAMPS_KEY } from "../types";
+import { DEFAULT_SETTINGS, STAMPS_KEY, isRewardExpired } from "../types";
 import { activePromotions } from "../promotions";
 
 /**
@@ -211,7 +211,10 @@ export class LocalApi implements LoyaltyApi {
     ];
     for (const { g, o, n } of checks) {
       if (g.target > 0 && Math.floor(n / g.target) > Math.floor(o / g.target)) {
-        (this.s.rewards[me.id] ??= []).push({ id: uid(), reward: g.reward, unlockedAt: now.toISOString() });
+        (this.s.rewards[me.id] ??= []).push({
+          id: uid(), reward: g.reward, unlockedAt: now.toISOString(),
+          expiresAt: st.rewardExpiryDays > 0 ? new Date(now.getTime() + st.rewardExpiryDays * 86_400_000).toISOString() : undefined,
+        });
         this.s.notifications.push({
           id: uid(), type: "GOAL_REACHED", title: "OBIETTIVO RAGGIUNTO", createdAt: now.toISOString(),
           body: { student_id: me.id, student_name: me.name, goal: g.name, target: g.target, reward: g.reward, date: now.toISOString() },
@@ -236,7 +239,7 @@ export class LocalApi implements LoyaltyApi {
   async listPromotions(): Promise<Promotion[]> { return activePromotions(this.s.lots); }
   async redeemReward(id: string) {
     const r = (this.s.rewards[this.user().id] ?? []).find((x) => x.id === id);
-    if (r && !r.redeemedAt) r.redeemedAt = new Date().toISOString();
+    if (r && !r.redeemedAt && !isRewardExpired(r)) r.redeemedAt = new Date().toISOString();
     save(this.s);
   }
 }

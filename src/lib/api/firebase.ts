@@ -186,6 +186,7 @@ export class FirebaseApi implements LoyaltyApi {
       stampTarget: stamp?.target ?? DEFAULT_SETTINGS.stampTarget,
       stampReward: stamp?.reward ?? DEFAULT_SETTINGS.stampReward,
       showPointsCard: app?.showPointsCard === true,
+      rewardExpiryDays: Number(app?.rewardExpiryDays ?? 0),
     };
   }
 
@@ -198,7 +199,7 @@ export class FirebaseApi implements LoyaltyApi {
   }
 
   async saveSettings(s: AppSettings) {
-    await setDoc(doc(this.db, "settings", "app"), { showPointsCard: s.showPointsCard }, { merge: true });
+    await setDoc(doc(this.db, "settings", "app"), { showPointsCard: s.showPointsCard, rewardExpiryDays: s.rewardExpiryDays }, { merge: true });
     const snap = await getDocs(query(collection(this.db, "goals"), where("counterKey", "==", STAMPS_KEY)));
     const row = { name: "stamps", counterKey: STAMPS_KEY, target: s.stampTarget, reward: s.stampReward, active: true };
     if (snap.empty) await addDoc(collection(this.db, "goals"), row);
@@ -235,7 +236,7 @@ export class FirebaseApi implements LoyaltyApi {
       settings: this.settingsFrom(app.data(), allGoals),
       rewards: rewards.docs.map((d) => {
         const r = d.data();
-        return { id: d.id, reward: r.reward, unlockedAt: iso(r.unlockedAt) ?? "", redeemedAt: iso(r.redeemedAt) };
+        return { id: d.id, reward: r.reward, unlockedAt: iso(r.unlockedAt) ?? "", redeemedAt: iso(r.redeemedAt), expiresAt: iso(r.expiresAt) };
       }),
     };
   }

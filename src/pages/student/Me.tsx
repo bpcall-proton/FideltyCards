@@ -4,9 +4,9 @@ import { Check, Coffee, CreditCard, Gift, PartyPopper, QrCode, Star, Ticket, Tre
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { DAILY_CODES_LIMIT, levelName, useStudent } from "@/lib/student";
-import { STAMPS_KEY, type Transaction } from "@/lib/types";
+import { STAMPS_KEY, isRewardExpired, type Transaction } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
-import { fmtDateTime, fmtInt } from "@/lib/utils";
+import { fmtDate, fmtDateTime, fmtInt } from "@/lib/utils";
 import { Badge, Button, buttonVariants, Card, CardContent, CardHeader, CardTitle, Modal, Progress } from "@/components/ui";
 
 const HERO_IMG =
@@ -29,7 +29,7 @@ export default function Me() {
 
   useEffect(() => {
     if (!status) return;
-    const pendingIds = status.rewards.filter((r) => !r.redeemedAt).map((r) => r.id).join(",");
+    const pendingIds = status.rewards.filter((r) => !r.redeemedAt && !isRewardExpired(r)).map((r) => r.id).join(",");
     if (pendingIds && sessionStorage.getItem("fidelty-reward-popup") !== pendingIds) {
       sessionStorage.setItem("fidelty-reward-popup", pendingIds);
       setPopup(true);
@@ -39,7 +39,8 @@ export default function Me() {
   if (!status) return <p className="text-muted-foreground">{t("loading")}</p>;
 
   const points = status.counters.points ?? 0;
-  const pending = status.rewards.filter((r) => !r.redeemedAt);
+  const pending = status.rewards.filter((r) => !r.redeemedAt && !isRewardExpired(r));
+  const expiredRewards = status.rewards.filter((r) => isRewardExpired(r));
   const { settings } = status;
   const showPoints = settings.showPointsCard;
   const pointGoals = status.goals.filter((g) => g.counterKey === "points").sort((a, b) => a.target - b.target);
@@ -120,6 +121,7 @@ export default function Me() {
           <div key={r.id} className="rounded-2xl border-2 border-primary bg-primary/5 p-4 space-y-3">
             <div className="flex items-center gap-2 font-black text-primary"><Gift className="h-5 w-5" /> {t("rwEntitled")}</div>
             <div className="text-2xl font-black">🎁 {r.reward}</div>
+            {r.expiresAt && <div className="text-sm font-bold text-red-600">{t("rwUntil", { d: fmtDate(r.expiresAt) })}</div>}
             <p className="text-sm text-[#7a6a5c]">{t("rwShowCashier")}</p>
             {confirmId === r.id ? (
               <div className="flex gap-2">
@@ -167,7 +169,7 @@ export default function Me() {
             <div key={r.id} className="flex items-center justify-between rounded-2xl border border-primary bg-primary/5 p-3">
               <div>
                 <div className="font-bold">🎁 {r.reward}</div>
-                <div className="text-xs text-muted-foreground">{t("meUnlockedOn", { d: fmtDateTime(r.unlockedAt) })}</div>
+                <div className="text-xs text-muted-foreground">{t("meUnlockedOn", { d: fmtDateTime(r.unlockedAt) })}{r.expiresAt && ` · ${t("rwUntil", { d: fmtDate(r.expiresAt) })}`}</div>
               </div>
               <Button size="sm" onClick={async () => { await api.redeemReward(r.id); await load(); }}>{t("rdRedeem")}</Button>
             </div>
@@ -176,6 +178,12 @@ export default function Me() {
             <div key={r.id} className="flex items-center justify-between rounded-2xl border p-3 opacity-70">
               <div className="text-sm">{r.reward}</div>
               <Badge variant="secondary">{t("meRedeemedOn", { d: fmtDateTime(r.redeemedAt) })}</Badge>
+            </div>
+          ))}
+          {expiredRewards.map((r) => (
+            <div key={r.id} className="flex items-center justify-between rounded-2xl border p-3 opacity-60">
+              <div className="text-sm line-through">{r.reward}</div>
+              <Badge variant="destructive">{t("rwExpiredOn", { d: fmtDate(r.expiresAt) })}</Badge>
             </div>
           ))}
         </CardContent>
