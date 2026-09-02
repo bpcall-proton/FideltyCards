@@ -1,8 +1,9 @@
 import { randomCode, normalizeCode } from "../codegen";
 import type {
-  AdminNotification, Code, GenerateLotInput, Goal, Lot, LoyaltyApi, Promotion, RedeemResult,
+  AdminNotification, AppSettings, Code, GenerateLotInput, Goal, Lot, LoyaltyApi, Promotion, RedeemResult,
   StudentStatus, Transaction, UnlockedReward, User,
 } from "../types";
+import { DEFAULT_SETTINGS, STAMPS_KEY } from "../types";
 import { activePromotions } from "../promotions";
 
 /**
@@ -21,6 +22,7 @@ interface Store {
   rewards: Record<string, UnlockedReward[]>;
   notifications: AdminNotification[];
   txSeq: number;
+  settings: AppSettings;
 }
 
 const KEY = "fidelty-demo-store";
@@ -36,6 +38,7 @@ function fresh(): Store {
   return {
     currentUserId: "admin-1",
     lots: [], codes: [], transactions: [], counters: {}, rewards: {}, notifications: [], txSeq: 983420,
+    settings: { ...DEFAULT_SETTINGS, stampReward: "Caffè gratis" },
     goals: [
       { id: uid(), name: "300 punti", counterKey: "points", target: 300, reward: "Caffè gratis" },
       { id: uid(), name: "5 caffè", counterKey: "CAFFE", target: 5, reward: "Caffè gratis" },
@@ -196,10 +199,18 @@ export class LocalApi implements LoyaltyApi {
     const oldVal = counters[key] ?? 0;
     const newVal = oldVal + delta;
     counters[key] = newVal;
+    const oldStamps = counters[STAMPS_KEY] ?? 0;
+    const newStamps = oldStamps + 1;
+    counters[STAMPS_KEY] = newStamps;
 
     const unlocked: { goal: string; reward: string; target: number }[] = [];
-    for (const g of this.s.goals.filter((g) => g.counterKey === key)) {
-      if (Math.floor(newVal / g.target) > Math.floor(oldVal / g.target)) {
+    const st = this.s.settings;
+    const checks = [
+      ...this.s.goals.filter((g) => g.counterKey === key).map((g) => ({ g, o: oldVal, n: newVal })),
+      { g: { id: STAMPS_KEY, name: STAMPS_KEY, counterKey: STAMPS_KEY, target: st.stampTarget, reward: st.stampReward }, o: oldStamps, n: newStamps },
+    ];
+    for (const { g, o, n } of checks) {
+      if (g.target > 0 && Math.floor(n / g.target) > Math.floor(o / g.target)) {
         (this.s.rewards[me.id] ??= []).push({ id: uid(), reward: g.reward, unlockedAt: now.toISOString() });
         this.s.notifications.push({
           id: uid(), type: "GOAL_REACHED", title: "OBIETTIVO RAGGIUNTO", createdAt: now.toISOString(),
@@ -218,8 +229,10 @@ export class LocalApi implements LoyaltyApi {
 
   async myStatus(): Promise<StudentStatus> {
     const me = this.user();
-    return { counters: this.s.counters[me.id] ?? {}, goals: await this.listGoals(), rewards: (this.s.rewards[me.id] ?? []).slice().reverse() };
+    return { counters: this.s.counters[me.id] ?? {}, goals: await this.listGoals(), rewards: (this.s.rewards[me.id] ?? []).slice().reverse(), settings: this.s.settings };
   }
+  async getSettings() { return this.s.settings; }
+  async saveSettings(s: AppSettings) { this.requireAdmin(); this.s.settings = s; save(this.s); }
   async listPromotions(): Promise<Promotion[]> { return activePromotions(this.s.lots); }
   async redeemReward(id: string) {
     const r = (this.s.rewards[this.user().id] ?? []).find((x) => x.id === id);

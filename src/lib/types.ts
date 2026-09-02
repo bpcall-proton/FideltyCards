@@ -109,10 +109,21 @@ export interface Promotion {
   expiresAt?: string;
 }
 
+export const STAMPS_KEY = "stamps";
+
+export interface AppSettings {
+  stampTarget: number;
+  stampReward: string;
+  showPointsCard: boolean;
+}
+
+export const DEFAULT_SETTINGS: AppSettings = { stampTarget: 10, stampReward: "", showPointsCard: false };
+
 export interface StudentStatus {
   counters: Record<string, number>;
   goals: Goal[];
   rewards: UnlockedReward[];
+  settings: AppSettings;
 }
 
 export type RedeemError =
@@ -170,6 +181,8 @@ export interface LoyaltyApi {
   cancelLot(lotId: string): Promise<void>;
   cancelPromotion(promotionId: string): Promise<void>;
   listNotifications(): Promise<AdminNotification[]>;
+  getSettings(): Promise<AppSettings>;
+  saveSettings(s: AppSettings): Promise<void>;
   listGoals(): Promise<Goal[]>;
   saveGoal(goal: Omit<Goal, "id"> & { id?: string }): Promise<void>;
   deleteGoal(id: string): Promise<void>;

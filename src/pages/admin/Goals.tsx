@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
-import type { Goal } from "@/lib/types";
+import { DEFAULT_SETTINGS, type AppSettings, type Goal } from "@/lib/types";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input } from "@/components/ui";
 
 export default function Goals() {
@@ -12,9 +12,22 @@ export default function Goals() {
   const [counterKey, setCounterKey] = useState("points");
   const [target, setTarget] = useState(300);
   const [reward, setReward] = useState("");
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [savedMsg, setSavedMsg] = useState(false);
 
-  const load = async () => setGoals(await api.listGoals());
+  const load = async () => {
+    const [g, s] = await Promise.all([api.listGoals(), api.getSettings()]);
+    setGoals(g); setSettings(s);
+  };
   useEffect(() => { void load(); }, []);
+
+  async function saveSettings(e: FormEvent) {
+    e.preventDefault();
+    if (settings.stampTarget < 1) return;
+    await api.saveSettings({ ...settings, stampTarget: Math.round(settings.stampTarget), stampReward: settings.stampReward.trim() });
+    setSavedMsg(true);
+    setTimeout(() => setSavedMsg(false), 2000);
+  }
 
   async function add(e: FormEvent) {
     e.preventDefault();
@@ -27,6 +40,27 @@ export default function Goals() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("stTitle")}</CardTitle>
+          <CardDescription>{t("stSubtitle")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={saveSettings} className="grid grid-cols-2 gap-3">
+            <Field label={t("stTarget")} hint={t("stTargetHint")}>
+              <Input type="number" min={1} max={50} value={settings.stampTarget} onChange={(e) => setSettings({ ...settings, stampTarget: Number(e.target.value) })} />
+            </Field>
+            <Field label={t("stReward")}>
+              <Input value={settings.stampReward} onChange={(e) => setSettings({ ...settings, stampReward: e.target.value })} placeholder={t("goalRewardPh")} required />
+            </Field>
+            <label className="col-span-2 flex items-center gap-2 text-sm">
+              <input type="checkbox" className="h-4 w-4" checked={settings.showPointsCard} onChange={(e) => setSettings({ ...settings, showPointsCard: e.target.checked })} />
+              {t("stShowPoints")}
+            </label>
+            <Button type="submit" className="col-span-2">{savedMsg ? t("acSaved") : t("acSave")}</Button>
+          </form>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>{t("goalsTitle")}</CardTitle>
