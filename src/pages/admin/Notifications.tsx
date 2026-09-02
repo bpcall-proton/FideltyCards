@@ -24,7 +24,7 @@ function AcceptButton({ n, onDone }: { n: AdminNotification; onDone: () => Promi
   const [busy, setBusy] = useState(false);
   return (
     <Button size="lg" className="w-full font-black" disabled={busy}
-      onClick={async () => { setBusy(true); try { await api.confirmReward(String(n.body.reward_id)); await onDone(); } finally { setBusy(false); } }}>
+      onClick={async () => { setBusy(true); try { await api.confirmReward(String(n.body.reward_id)); await onDone(); } catch (e) { alert(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }}>
       <Gift className="h-5 w-5 mr-2" /> {t("nrAccept")}
     </Button>
   );

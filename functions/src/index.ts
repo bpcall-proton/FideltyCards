@@ -451,9 +451,9 @@ export const confirmReward = onCall(async (req) => {
     if (!snap.exists) throw new HttpsError("not-found", "Premio non trovato");
     if (snap.data()?.redeemedAt) throw new HttpsError("failed-precondition", "Premio già riscattato");
     if (!snap.data()?.requestedAt) throw new HttpsError("failed-precondition", "Premio non richiesto dallo studente");
+    const notifs = await t.get(db.collection("notifications").where("rewardId", "==", id));
     const now = Timestamp.now();
     t.update(ref, { redeemedAt: now });
-    const notifs = await t.get(db.collection("notifications").where("rewardId", "==", id));
     notifs.docs.forEach((n) => t.update(n.ref, { readAt: now }));
   });
   return { ok: true };

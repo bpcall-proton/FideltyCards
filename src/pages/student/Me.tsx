@@ -18,7 +18,6 @@ export default function Me() {
   const { status, codesToday, reload } = useStudent();
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [popup, setPopup] = useState(false);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -26,6 +25,13 @@ export default function Me() {
     setTxs(await api.listTransactions().catch(() => []));
   };
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const waiting = !!status?.rewards.some((r) => r.requestedAt && !r.redeemedAt);
+  useEffect(() => {
+    if (!waiting) return;
+    const id = setInterval(() => void reload(), 5000);
+    return () => clearInterval(id);
+  }, [waiting, reload]);
 
   useEffect(() => {
     if (!status) return;
@@ -128,18 +134,11 @@ export default function Me() {
                 <div className="font-black animate-pulse">⏳ {t("rwWaiting")}</div>
                 <div>{t("rwWaitingHint")}</div>
               </div>
-            ) : confirmId === r.id ? (
-              <div className="space-y-2">
-                <p className="text-sm font-bold text-red-600">{t("rwIrreversible")}</p>
-                <div className="flex gap-2">
-                  <Button className="flex-1 font-bold" disabled={busy} onClick={async () => { setBusy(true); try { await api.redeemReward(r.id); await reload(); } finally { setBusy(false); setConfirmId(null); } }}>{t("rwConfirm")}</Button>
-                  <Button variant="outline" onClick={() => setConfirmId(null)}>{t("rwLater")}</Button>
-                </div>
-              </div>
             ) : (
               <>
                 <p className="text-sm text-[#7a6a5c]">{t("rwShowCashier")}</p>
-                <Button size="lg" className="w-full font-bold" onClick={() => setConfirmId(r.id)}>{t("rdRedeem")}</Button>
+                <p className="text-sm font-bold text-red-600">{t("rwIrreversible")}</p>
+                <Button size="lg" className="w-full font-bold" disabled={busy} onClick={async () => { setBusy(true); try { await api.redeemReward(r.id); } catch { /* già richiesto: ricarico lo stato */ } finally { await reload(); setBusy(false); } }}>{t("rdRedeem")}</Button>
               </>
             )}
           </div>
