@@ -21,6 +21,10 @@ function eposXml(c: IssuedCode, title: string): string {
   return `<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">${body}</epos-print></s:Body></s:Envelope>`;
 }
 
+export function printerHomeUrl(p: Printer): string {
+  return `${p.secure === false ? "http" : "https"}://${p.host}/`;
+}
+
 export function eposUrl(p: Printer): string {
   const scheme = p.secure === false ? "http" : "https";
   return `${scheme}://${p.host}/cgi-bin/epos/service.cgi?devid=${encodeURIComponent(p.deviceId || "local_printer")}&timeout=10000`;
@@ -28,11 +32,18 @@ export function eposUrl(p: Printer): string {
 
 async function printEpos(p: Printer, c: IssuedCode, title: string): Promise<void> {
   if (!p.host) throw new Error("PRINTER_NO_HOST");
-  const res = await fetch(eposUrl(p), {
-    method: "POST",
-    headers: { "Content-Type": "text/xml; charset=utf-8", "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT", SOAPAction: '""' },
-    body: eposXml(c, title),
-  });
+  if (window.location.protocol === "https:" && p.secure === false) throw new Error("PRINTER_MIXED_CONTENT");
+  let res: Response;
+  try {
+    res = await fetch(eposUrl(p), {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "text/xml; charset=utf-8", "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT", SOAPAction: '""' },
+      body: eposXml(c, title),
+    });
+  } catch {
+    throw new Error("PRINTER_UNREACHABLE");
+  }
   const txt = await res.text();
   if (!res.ok || !/success="true"/.test(txt)) {
     const m = /code="([^"]+)"/.exec(txt);

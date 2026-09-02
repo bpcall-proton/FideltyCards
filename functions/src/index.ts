@@ -324,6 +324,30 @@ export const cancelLot = onCall({ timeoutSeconds: 540 }, async (req) => {
   return { ok: true, cancelled };
 });
 
+export const deleteLot = onCall({ timeoutSeconds: 540 }, async (req) => {
+  await requireAdmin(req);
+  const lotId = String(req.data?.lotId ?? "");
+  const ref = db.doc(`lots/${lotId}`);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Lotto non trovato");
+  const lot = snap.data() as LotDoc;
+  const expired = !!lot.expiresAt && lot.expiresAt.toMillis() <= Date.now();
+  if (lot.status === "ACTIVE" && !expired) throw new HttpsError("failed-precondition", "Il lotto è attivo: disattivalo prima di eliminarlo");
+  let deleted = 0;
+  for (;;) {
+    const codes = await db.collection("codes").where("lotId", "==", lotId).limit(BATCH).get();
+    if (codes.empty) break;
+    const batch = db.batch();
+    codes.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    deleted += codes.size;
+  }
+  const products = await db.collection("products").where("printLotId", "==", lotId).get();
+  await Promise.all(products.docs.map((d) => d.ref.update({ printLotId: null })));
+  await ref.delete();
+  return { ok: true, deleted };
+});
+
 export const cancelPromotion = onCall({ timeoutSeconds: 540 }, async (req) => {
   await requireAdmin(req);
   const promotionId = String(req.data?.promotionId ?? "");

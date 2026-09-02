@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Printer as PrinterIcon, Star, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
-import { eposUrl, printCode } from "@/lib/print";
+import { eposUrl, printCode, printerHomeUrl } from "@/lib/print";
 import type { Printer, PrinterSettings, PrinterType } from "@/lib/types";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Select } from "@/components/ui";
 
@@ -15,6 +15,7 @@ export default function Printers() {
   const [deviceId, setDeviceId] = useState("local_printer");
   const [secure, setSecure] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
+  const [failed, setFailed] = useState<Printer | null>(null);
 
   useEffect(() => { void api.getPrinters().then(setS); }, []);
 
@@ -33,11 +34,14 @@ export default function Printers() {
 
   async function test(p: Printer) {
     setMsg(t("prPrinting"));
+    setFailed(null);
     try {
       await printCode(p, { code: "12345678", lotId: "", lotName: "TEST", productName: t("prTestTicket"), reward: null, stampTarget: null }, t("appName"));
       setMsg(t("prTestOk"));
     } catch (err) {
-      setMsg(t("prPrintError", { e: err instanceof Error ? err.message : String(err) }));
+      const e = err instanceof Error ? err.message : String(err);
+      setMsg(t("prPrintError", { e }));
+      if (p.type === "epos") setFailed(p);
     }
   }
 
@@ -90,6 +94,12 @@ export default function Printers() {
           ))}
           {s.printers.length === 0 && <p className="text-sm text-muted-foreground py-2">{t("prEmpty")}</p>}
           {msg && <p className="text-sm pt-3">{msg}</p>}
+          {failed && (
+            <div className="text-xs text-muted-foreground pt-2 space-y-1">
+              <p>{t("prFixHint")}</p>
+              <a className="text-primary underline font-medium" href={printerHomeUrl(failed)} target="_blank" rel="noreferrer">{t("prOpenPrinter", { u: printerHomeUrl(failed) })}</a>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

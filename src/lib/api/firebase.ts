@@ -168,6 +168,7 @@ export class FirebaseApi implements LoyaltyApi {
 
   async cancelCode(code: string) { await this.call<{ code: string }, unknown>("cancelCode")({ code }); }
   async cancelLot(lotId: string) { await this.call<{ lotId: string }, unknown>("cancelLot")({ lotId }); }
+  async deleteLot(lotId: string) { await this.call<{ lotId: string }, unknown>("deleteLot")({ lotId }); }
   async cancelPromotion(promotionId: string) { await this.call<{ promotionId: string }, unknown>("cancelPromotion")({ promotionId }); }
 
   async listNotifications(): Promise<AdminNotification[]> {

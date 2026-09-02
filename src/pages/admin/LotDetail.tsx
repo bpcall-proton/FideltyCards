@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Ban, Download, FileSpreadsheet, FileText, QrCode, Search } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Ban, Download, FileSpreadsheet, FileText, QrCode, Search, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { exportCsv, exportExcel, exportPdfQr, exportPdfTable } from "@/lib/export";
@@ -18,6 +18,7 @@ const STATUS_VARIANT: Record<CodeStatus, "success" | "secondary" | "warning" | "
 export default function LotDetail() {
   const { id = "" } = useParams();
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [lot, setLot] = useState<Lot | null>(null);
   const [codes, setCodes] = useState<Code[]>([]);
   const [txs, setTxs] = useState<Transaction[]>([]);
@@ -53,6 +54,17 @@ export default function LotDetail() {
     if (!lot || !confirm(t("confirmCancelLot", { n: lot.lotNumber }))) return;
     await api.cancelLot(lot.id);
     await load();
+  }
+  async function deleteLot() {
+    if (!lot || !confirm(t("confirmDeleteLot", { n: lot.lotNumber }))) return;
+    setProgress(t("ldDeleting"));
+    try {
+      await api.deleteLot(lot.id);
+      navigate("/admin/lots");
+    } catch (err) {
+      setProgress(null);
+      alert(err instanceof Error ? err.message : String(err));
+    }
   }
   async function cancelCode(c: Code) {
     if (!confirm(t("confirmCancelCode", { c: c.code }))) return;
@@ -104,6 +116,9 @@ export default function LotDetail() {
             <span className="flex-1" />
             {lot.promotionId && <Button size="sm" variant="outline" onClick={cancelPromotion}><Ban className="h-4 w-4" /> {t("ldCancelPromo")}</Button>}
             {lot.status === "ACTIVE" && <Button size="sm" variant="destructive" onClick={cancelLot}><Ban className="h-4 w-4" /> {t("ldCancelLot")}</Button>}
+            {(lot.status !== "ACTIVE" || (lot.expiresAt && new Date(lot.expiresAt).getTime() <= Date.now())) && (
+              <Button size="sm" variant="destructive" onClick={deleteLot} disabled={!!progress}><Trash2 className="h-4 w-4" /> {t("ldDeleteLot")}</Button>
+            )}
           </div>
           {progress && <p className="text-sm text-primary">{progress}</p>}
         </CardContent>

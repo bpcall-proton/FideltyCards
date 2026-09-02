@@ -326,6 +326,9 @@ const ro = {
   prHost: "Adresă IP / host", prHostHint: "IP-ul imprimantei în rețeaua locală", prDevice: "Device ID", prSecure: "HTTPS (recomandat; dezactivează dacă imprimanta acceptă doar HTTP)",
   prEposHelp: "Telefonul/PC-ul trebuie să fie în aceeași rețea Wi-Fi cu imprimanta. Pe imprimantă activează ePOS-Print (Epson TM Utility) și, pentru HTTPS, acceptă o dată certificatul deschizând adresa ei în browser.",
   prAdd: "Adaugă imprimanta", prDefault: "implicită", prSetDefault: "Setează ca implicită", prTest: "Test", prTestTicket: "BON DE TEST", prTestOk: "Test trimis la imprimantă.",
+  prFixHint: "Verifică: telefonul/PC-ul e în aceeași rețea Wi-Fi; ePOS-Print e activat pe imprimantă; apoi deschide adresa imprimantei mai jos și acceptă certificatul (\"Avansat → Continuă\"), apoi reîncearcă Test. Dacă nu merge, folosește tipul \"Imprimare din browser\".",
+  prOpenPrinter: "Deschide pagina imprimantei: {u}",
+  ldDeleteLot: "ȘTERGE LOTUL", ldDeleting: "Se șterge…", confirmDeleteLot: "Ștergi definitiv lotul #{n} și toate codurile lui? Istoricul utilizărilor rămâne.",
   prEmpty: "Nicio imprimantă configurată: se folosește imprimarea din browser.", prPrinting: "Se tipărește…", prPrintError: "Eroare la tipărire: {e}", prLastPrinted: "Ultimul cod tipărit",
 } as const;
 
@@ -434,6 +437,9 @@ const it: Dict = {
   prHost: "Indirizzo IP / host", prHostHint: "IP della stampante nella rete locale", prDevice: "Device ID", prSecure: "HTTPS (consigliato; disattiva se la stampante accetta solo HTTP)",
   prEposHelp: "Telefono/PC devono essere nella stessa rete Wi-Fi della stampante. Sulla stampante attiva ePOS-Print (Epson TM Utility) e, per HTTPS, accetta una volta il certificato aprendo il suo indirizzo nel browser.",
   prAdd: "Aggiungi stampante", prDefault: "predefinita", prSetDefault: "Imposta come predefinita", prTest: "Test", prTestTicket: "SCONTRINO DI PROVA", prTestOk: "Test inviato alla stampante.",
+  prFixHint: "Controlla: telefono/PC nella stessa rete Wi-Fi; ePOS-Print attivo sulla stampante; poi apri l'indirizzo della stampante qui sotto e accetta il certificato (\"Avanzate → Procedi\"), quindi ripeti il Test. Se non funziona usa il tipo \"Stampa dal browser\".",
+  prOpenPrinter: "Apri la pagina della stampante: {u}",
+  ldDeleteLot: "ELIMINA LOTTO", ldDeleting: "Eliminazione…", confirmDeleteLot: "Eliminare definitivamente il lotto #{n} e tutti i suoi codici? Lo storico degli utilizzi resta.",
   prEmpty: "Nessuna stampante configurata: si usa la stampa del browser.", prPrinting: "Stampa in corso…", prPrintError: "Errore di stampa: {e}", prLastPrinted: "Ultimo codice stampato",
 };
 
@@ -539,6 +545,9 @@ const ru: Dict = {
   prHost: "IP-адрес / хост", prHostHint: "IP принтера в локальной сети", prDevice: "Device ID", prSecure: "HTTPS (рекомендуется; отключите, если принтер принимает только HTTP)",
   prEposHelp: "Телефон/ПК должны быть в той же Wi-Fi сети, что и принтер. На принтере включите ePOS-Print (Epson TM Utility) и для HTTPS один раз примите сертификат, открыв его адрес в браузере.",
   prAdd: "Добавить принтер", prDefault: "по умолчанию", prSetDefault: "Сделать по умолчанию", prTest: "Тест", prTestTicket: "ТЕСТОВЫЙ ЧЕК", prTestOk: "Тест отправлен на принтер.",
+  prFixHint: "Проверьте: телефон/ПК в той же Wi-Fi сети; ePOS-Print включён на принтере; затем откройте адрес принтера ниже и примите сертификат (\"Дополнительно → Перейти\"), после чего повторите Тест. Если не работает, используйте тип \"Печать из браузера\".",
+  prOpenPrinter: "Открыть страницу принтера: {u}",
+  ldDeleteLot: "УДАЛИТЬ ПАРТИЮ", ldDeleting: "Удаление…", confirmDeleteLot: "Удалить партию #{n} и все её коды безвозвратно? История использований сохранится.",
   prEmpty: "Принтеры не настроены: используется печать браузера.", prPrinting: "Печать…", prPrintError: "Ошибка печати: {e}", prLastPrinted: "Последний напечатанный код",
 };
 

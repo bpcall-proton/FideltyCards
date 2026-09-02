@@ -139,6 +139,17 @@ export class LocalApi implements LoyaltyApi {
     this.s.codes.forEach((c) => { if (c.lotId === lotId && c.status === "ACTIVE") c.status = "CANCELLED"; });
     save(this.s);
   }
+  async deleteLot(lotId: string) {
+    this.requireAdmin();
+    const l = this.s.lots.find((x) => x.id === lotId);
+    if (!l) return;
+    const expired = !!l.expiresAt && new Date(l.expiresAt).getTime() <= Date.now();
+    if (l.status === "ACTIVE" && !expired) throw new Error("LOT_ACTIVE");
+    this.s.lots = this.s.lots.filter((x) => x.id !== lotId);
+    this.s.codes = this.s.codes.filter((c) => c.lotId !== lotId);
+    this.s.products.forEach((p) => { if (p.printLotId === lotId) p.printLotId = undefined; });
+    save(this.s);
+  }
   async cancelPromotion(promotionId: string) {
     this.requireAdmin();
     for (const l of this.s.lots.filter((x) => x.promotionId === promotionId)) await this.cancelLot(l.id);

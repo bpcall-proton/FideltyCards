@@ -227,6 +227,7 @@ export interface LoyaltyApi {
   listTransactions(lotId?: string): Promise<Transaction[]>;
   cancelCode(code: string): Promise<void>;
   cancelLot(lotId: string): Promise<void>;
+  deleteLot(lotId: string): Promise<void>;
   cancelPromotion(promotionId: string): Promise<void>;
   listNotifications(): Promise<AdminNotification[]>;
   getSettings(): Promise<AppSettings>;
