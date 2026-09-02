@@ -74,6 +74,7 @@ interface ProfileDoc {
 }
 
 const STAMPS_KEY = "stamps";
+const DEFAULT_STAMP_GOAL = { name: "stamps", counterKey: STAMPS_KEY, target: 10, reward: "Cafea gratis", active: true };
 const VALUE_TYPES: ValueType[] = ["points", "quantity", "bonus", "product", "promotion"];
 const CODE_FORMATS: CodeFormat[] = ["numeric", "alphanumeric", "qr", "numeric_qr"];
 const MAX_QUANTITY = 100_000;
@@ -370,14 +371,16 @@ export const redeemCode = onCall(async (req) => {
     t.set(counterRef, { [counterKey]: newVal, [STAMPS_KEY]: newStamps, updatedAt: now }, { merge: true });
 
     const unlocked: { goal: string; reward: string; target: number }[] = [];
+    const stampGoals: { id: string; goal: GoalDoc }[] = stampGoalsSnap.empty
+      ? [{ id: STAMPS_KEY, goal: DEFAULT_STAMP_GOAL as GoalDoc }]
+      : stampGoalsSnap.docs.map((g) => ({ id: g.id, goal: g.data() as GoalDoc }));
     const checks = [
-      ...goalsSnap.docs.map((g) => ({ g, oldV: oldVal, newV: newVal })),
-      ...stampGoalsSnap.docs.map((g) => ({ g, oldV: oldStamps, newV: newStamps })),
+      ...goalsSnap.docs.map((g) => ({ id: g.id, goal: g.data() as GoalDoc, oldV: oldVal, newV: newVal })),
+      ...stampGoals.map((s) => ({ ...s, oldV: oldStamps, newV: newStamps })),
     ];
-    for (const { g, oldV, newV } of checks) {
-      const goal = g.data() as GoalDoc;
+    for (const { id, goal, oldV, newV } of checks) {
       if (goal.target > 0 && Math.floor(newV / goal.target) > Math.floor(oldV / goal.target)) {
-        t.create(db.collection("rewards").doc(), { studentId: student, goalId: g.id, goalName: goal.name, reward: goal.reward, unlockedAt: now, redeemedAt: null });
+        t.create(db.collection("rewards").doc(), { studentId: student, goalId: id, goalName: goal.name, reward: goal.reward, unlockedAt: now, redeemedAt: null });
         t.create(db.collection("notifications").doc(), {
           type: "GOAL_REACHED",
           title: "OBIETTIVO RAGGIUNTO",

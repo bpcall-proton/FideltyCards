@@ -18,6 +18,8 @@ export default function Me() {
   const { status, codesToday, reload } = useStudent();
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [popup, setPopup] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const load = async () => {
     await reload();
@@ -114,6 +116,21 @@ export default function Me() {
           {t("stampHint", { n: STAMPS - stamped, r: stampReward })}
           {stampCycles > 0 && <span className="text-[#9a8a7c] font-normal"> · {t("stampCycle", { n: stampCycles })}</span>}
         </div>
+        {pending.map((r) => (
+          <div key={r.id} className="rounded-2xl border-2 border-primary bg-primary/5 p-4 space-y-3">
+            <div className="flex items-center gap-2 font-black text-primary"><Gift className="h-5 w-5" /> {t("rwEntitled")}</div>
+            <div className="text-2xl font-black">🎁 {r.reward}</div>
+            <p className="text-sm text-[#7a6a5c]">{t("rwShowCashier")}</p>
+            {confirmId === r.id ? (
+              <div className="flex gap-2">
+                <Button className="flex-1 font-bold" disabled={busy} onClick={async () => { setBusy(true); try { await api.redeemReward(r.id); await reload(); } finally { setBusy(false); setConfirmId(null); } }}>{t("rwConfirm")}</Button>
+                <Button variant="outline" onClick={() => setConfirmId(null)}>{t("rwLater")}</Button>
+              </div>
+            ) : (
+              <Button size="lg" className="w-full font-bold" onClick={() => setConfirmId(r.id)}>{t("rdRedeem")}</Button>
+            )}
+          </div>
+        ))}
       </section>
 
       {showPoints && (

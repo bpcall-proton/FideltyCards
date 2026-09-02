@@ -93,6 +93,9 @@ const ro = {
   rwTitle: "🎁 Ai un premiu de revendicat!",
   rwBody: "Arată acest ecran la casă și apasă REVENDICĂ.",
   rwLater: "Mai târziu",
+  rwEntitled: "AI DREPTUL LA:",
+  rwShowCashier: "Arată ecranul la casă. Vânzătoarea confirmă și apoi apeși REVENDICĂ: premiul se marchează consumat.",
+  rwConfirm: "Confirmă — premiu primit",
 
   // login
   loginFullName: "Nume și prenume",
@@ -307,6 +310,7 @@ const it: Dict = {
   meMyBalance: "IL MIO SALDO", meHello: "Ciao, {n}", meCodesToday: "{n}/{m} codici oggi", meEnterOne: "Inserisci un codice",
   meNextReward: "PROSSIMO PREMIO", meStampMissing: "Manca: {n} {p} per {r}",
   stampTitle: "LA MIA TESSERA FEDELTÀ", stampHint: "Ogni codice = un timbro. Mancano {n} per: {r}",
+  rwEntitled: "HAI DIRITTO A:", rwShowCashier: "Mostra lo schermo in cassa. La venditrice conferma e poi premi RISCATTA: il premio viene segnato come consumato.", rwConfirm: "Conferma — premio ricevuto",
   stTitle: "Tessera fedeltà", stSubtitle: "Ogni codice inserito marca una casella. A tessera piena il premio si sblocca e la tessera riparte da zero.", stTarget: "Caselle sulla tessera", stTargetHint: "Numero di codici per una tessera completa", stReward: "Premio a tessera completa", stShowPoints: "Mostra agli studenti anche la tessera punti (opzionale, per altri concorsi)", stampDone: "Tessera completa! Mostrala in cassa.", defReward: "Caffè gratis", defCoffee: "Caffè consumati",
   navAccount: "Account", acTitle: "Il mio account", acName: "Nome", acEmail: "Email", acRole: "Ruolo", acRoleAdmin: "Amministratore", acRoleStudent: "Studente", acLevel: "Livello", acLang: "Lingua dell'app", acLogout: "Esci dall'account", acSaved: "Salvato", acSave: "Salva", stampCycle: "Tessera completata {n} volte",
   howTitle: "COME FUNZIONA",
@@ -382,6 +386,7 @@ const ru: Dict = {
   meMyBalance: "МОЙ БАЛАНС", meHello: "Привет, {n}", meCodesToday: "{n}/{m} кодов сегодня", meEnterOne: "Ввести код",
   meNextReward: "СЛЕДУЮЩАЯ НАГРАДА", meStampMissing: "Не хватает: {n} {p} до {r}",
   stampTitle: "МОЯ КАРТА ЛОЯЛЬНОСТИ", stampHint: "Каждый код = один штамп. Осталось {n} до: {r}",
+  rwEntitled: "ВАМ ПОЛОЖЕНО:", rwShowCashier: "Покажите экран на кассе. Продавец подтверждает, затем нажмите ПОЛУЧИТЬ: награда отмечается как использованная.", rwConfirm: "Подтвердить — награда получена",
   stTitle: "Карта лояльности", stSubtitle: "Каждый введённый код отмечает клетку. При полной карте награда открывается, и карта начинается заново.", stTarget: "Клеток на карте", stTargetHint: "Количество кодов для полной карты", stReward: "Награда за полную карту", stShowPoints: "Показывать студентам также карту баллов (опционально, для других конкурсов)", stampDone: "Карта заполнена! Покажите на кассе.", defReward: "Бесплатный кофе", defCoffee: "Выпито кофе",
   navAccount: "Аккаунт", acTitle: "Мой аккаунт", acName: "Имя", acEmail: "Email", acRole: "Роль", acRoleAdmin: "Администратор", acRoleStudent: "Студент", acLevel: "Уровень", acLang: "Язык приложения", acLogout: "Выйти из аккаунта", acSaved: "Сохранено", acSave: "Сохранить", stampCycle: "Карта заполнена {n} раз",
   howTitle: "КАК ЭТО РАБОТАЕТ",
