@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Check, Coffee, Gift, KeyRound, QrCode, ShoppingBag, Sparkles, Ticket } from "lucide-react";
+import { Check, Coffee, Gift, Globe, KeyRound, QrCode, ShoppingBag, Sparkles, Ticket } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button, Field, Input } from "@/components/ui";
@@ -67,7 +67,7 @@ export default function Login() {
 
       <header className="relative z-10 flex items-center justify-between px-5 py-4 max-w-6xl mx-auto">
         <div className="flex items-center gap-2 font-black tracking-tight"><Ticket className="h-6 w-6 text-orange-400" /> {t("appName")}</div>
-        <div className="[&_button]:text-white/70 [&_button:hover]:text-white [&_select]:bg-white/10 [&_select]:text-white [&_select]:border-white/20"><LangSwitch /></div>
+        <LangSwitch className="h-10 rounded-xl border-orange-400/50 bg-[#0c1226] text-white text-sm font-bold px-3 [&>option]:bg-[#0c1226] [&>option]:text-white" />
       </header>
 
       <main className="relative z-10 max-w-6xl mx-auto px-5 pb-16 grid gap-10 lg:grid-cols-2 lg:items-start">
@@ -105,6 +105,10 @@ export default function Login() {
         <section className="lg:sticky lg:top-6">
           <div className="relative rounded-3xl p-[1px] bg-gradient-to-br from-orange-400/60 via-white/10 to-cyan-400/60 shadow-[0_0_80px_-20px_rgba(34,211,238,.5)]">
             <div className="rounded-3xl bg-[#0c1226]/90 backdrop-blur-xl p-6 sm:p-8">
+              <div className="flex items-center justify-between gap-3 mb-4 text-xs font-bold tracking-widest text-white/50">
+                <span className="flex items-center gap-1"><Globe className="h-4 w-4" /> RO / IT / RU</span>
+                <LangSwitch className="h-9 rounded-xl border-white/20 bg-white/10 text-white text-sm font-bold px-3 [&>option]:bg-[#0c1226] [&>option]:text-white" />
+              </div>
               <div className="flex gap-1 rounded-2xl bg-white/5 p-1 mb-6">
                 {(["in", "up"] as const).map((m) => (
                   <button key={m} type="button" onClick={() => setMode(m)}
