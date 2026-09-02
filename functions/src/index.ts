@@ -422,9 +422,39 @@ export const redeemReward = onCall(async (req) => {
     const snap = await t.get(ref);
     if (!snap.exists || snap.data()?.studentId !== student) throw new HttpsError("not-found", "Premio non trovato");
     if (snap.data()?.redeemedAt) throw new HttpsError("failed-precondition", "Premio già riscattato");
+    if (snap.data()?.requestedAt) throw new HttpsError("failed-precondition", "REWARD_REQUESTED");
     const exp = snap.data()?.expiresAt as Timestamp | null | undefined;
     if (exp && exp.toMillis() <= Date.now()) throw new HttpsError("failed-precondition", "REWARD_EXPIRED");
-    t.update(ref, { redeemedAt: Timestamp.now() });
+    const prof = (await t.get(db.doc(`profiles/${student}`))).data() ?? {};
+    const now = Timestamp.now();
+    t.update(ref, { requestedAt: now });
+    t.create(db.collection("notifications").doc(), {
+      type: "REWARD_REQUEST",
+      title: "RICHIESTA PREMIO",
+      rewardId: id,
+      body: { reward_id: id, student_id: student, student_name: prof.fullName ?? student, reward: snap.data()?.reward, date: now.toDate().toISOString() },
+      readAt: null,
+      createdAt: now,
+    });
+  });
+  return { ok: true };
+});
+
+// ---------------------------------------------------------------- confirmReward (admin)
+
+export const confirmReward = onCall(async (req) => {
+  await requireAdmin(req);
+  const id = String(req.data?.rewardId ?? "");
+  await db.runTransaction(async (t) => {
+    const ref = db.doc(`rewards/${id}`);
+    const snap = await t.get(ref);
+    if (!snap.exists) throw new HttpsError("not-found", "Premio non trovato");
+    if (snap.data()?.redeemedAt) throw new HttpsError("failed-precondition", "Premio già riscattato");
+    if (!snap.data()?.requestedAt) throw new HttpsError("failed-precondition", "Premio non richiesto dallo studente");
+    const notifs = await t.get(db.collection("notifications").where("rewardId", "==", id));
+    const now = Timestamp.now();
+    t.update(ref, { redeemedAt: now });
+    notifs.docs.forEach((n) => t.update(n.ref, { readAt: now }));
   });
   return { ok: true };
 });

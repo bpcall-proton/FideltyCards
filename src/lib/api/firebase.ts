@@ -236,7 +236,7 @@ export class FirebaseApi implements LoyaltyApi {
       settings: this.settingsFrom(app.data(), allGoals),
       rewards: rewards.docs.map((d) => {
         const r = d.data();
-        return { id: d.id, reward: r.reward, unlockedAt: iso(r.unlockedAt) ?? "", redeemedAt: iso(r.redeemedAt), expiresAt: iso(r.expiresAt) };
+        return { id: d.id, reward: r.reward, unlockedAt: iso(r.unlockedAt) ?? "", requestedAt: iso(r.requestedAt), redeemedAt: iso(r.redeemedAt), expiresAt: iso(r.expiresAt) };
       }),
     };
   }
@@ -247,4 +247,5 @@ export class FirebaseApi implements LoyaltyApi {
   }
 
   async redeemReward(id: string) { await this.call<{ rewardId: string }, unknown>("redeemReward")({ rewardId: id }); }
+  async confirmReward(id: string) { await this.call<{ rewardId: string }, unknown>("confirmReward")({ rewardId: id }); }
 }
