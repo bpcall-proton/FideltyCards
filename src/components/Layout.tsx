@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Bell, Coffee, LogOut, Ticket, ListOrdered, PlusCircle, QrCode, CreditCard, Tag, Wallet, Target, UserRound } from "lucide-react";
+import { Bell, Coffee, LogOut, Ticket, ListOrdered, PlusCircle, QrCode, CreditCard, Tag, Wallet, Target, UserRound, Package, Printer } from "lucide-react";
 import { levelName, useStudent } from "@/lib/student";
 import { fmtInt } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -10,9 +10,11 @@ import { LANGS, useI18n, type I18nKey, type Lang } from "@/lib/i18n";
 import { RewardRequestPopup } from "@/pages/admin/Notifications";
 
 const adminNav: { to: string; label: I18nKey; icon: typeof Bell }[] = [
+  { to: "/admin/products", label: "navProducts", icon: Package },
   { to: "/admin/generate", label: "navGenerate", icon: PlusCircle },
   { to: "/admin/lots", label: "navLots", icon: ListOrdered },
   { to: "/admin/goals", label: "navGoals", icon: Target },
+  { to: "/admin/printers", label: "navPrinters", icon: Printer },
   { to: "/admin/notifications", label: "navNotifications", icon: Bell },
   { to: "/account", label: "navAccount", icon: UserRound },
 ];

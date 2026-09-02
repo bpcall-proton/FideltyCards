@@ -33,6 +33,7 @@ interface LotDoc {
   valueType: ValueType;
   valueAmount: number;
   productKey: string | null;
+  productId: string | null;
   promotionId: string | null;
   codeFormat: CodeFormat;
   codeLength: number;
@@ -67,6 +68,14 @@ interface GoalDoc {
   active: boolean;
 }
 
+interface ProductDoc {
+  name: string;
+  stampTarget: number;
+  reward: string;
+  active: boolean;
+  printLotId: string | null;
+}
+
 interface ProfileDoc {
   fullName: string;
   role: "student" | "admin";
@@ -74,6 +83,7 @@ interface ProfileDoc {
 }
 
 const STAMPS_KEY = "stamps";
+const productStampsKey = (productId: string) => `${STAMPS_KEY}:${productId}`;
 const DEFAULT_STAMP_GOAL = { name: "stamps", counterKey: STAMPS_KEY, target: 10, reward: "Cafea gratis", active: true };
 const VALUE_TYPES: ValueType[] = ["points", "quantity", "bonus", "product", "promotion"];
 const CODE_FORMATS: CodeFormat[] = ["numeric", "alphanumeric", "qr", "numeric_qr"];
@@ -157,6 +167,9 @@ export const generateCodeLot = onCall({ timeoutSeconds: 540, memory: "1GiB" }, a
   const space = Math.pow(codeFormat === "alphanumeric" ? 32 : 10, codeLength);
   if (quantity > space / 10) throw new HttpsError("invalid-argument", "Aumenta la lunghezza del codice per questa quantità");
 
+  const productId = d.productId ? String(d.productId) : null;
+  if (productId && !(await db.doc(`products/${productId}`).get()).exists) throw new HttpsError("not-found", "Prodotto non trovato");
+
   const now = Timestamp.now();
   const lotRef = db.collection("lots").doc();
   const lot: LotDoc = {
@@ -165,6 +178,7 @@ export const generateCodeLot = onCall({ timeoutSeconds: 540, memory: "1GiB" }, a
     valueType,
     valueAmount,
     productKey: d.productKey ? String(d.productKey).trim().toUpperCase() : null,
+    productId,
     promotionId: d.promotionId ? String(d.promotionId).trim() : null,
     codeFormat,
     codeLength,
@@ -209,6 +223,107 @@ export const generateCodeLot = onCall({ timeoutSeconds: 540, memory: "1GiB" }, a
   return { lotId: lotRef.id, lotNumber: lot.lotNumber };
 });
 
+// ---------------------------------------------------------------- issueCode (stampa singola, anche preventiva)
+
+/** Crea UN nuovo codice nel lotto di stampa del prodotto (o nel lotto indicato) e lo restituisce per la stampa. */
+export const issueCode = onCall(async (req) => {
+  const admin = await requireAdmin(req);
+  const productId = req.data?.productId ? String(req.data.productId) : null;
+  let lotId = req.data?.lotId ? String(req.data.lotId) : null;
+  let product: ProductDoc | null = null;
+  const now = Timestamp.now();
+
+  if (productId) {
+    const pRef = db.doc(`products/${productId}`);
+    const pSnap = await pRef.get();
+    if (!pSnap.exists) throw new HttpsError("not-found", "Prodotto non trovato");
+    product = pSnap.data() as ProductDoc;
+    if (!lotId) {
+      const existing = product.printLotId ? await db.doc(`lots/${product.printLotId}`).get() : null;
+      if (existing?.exists && existing.data()?.status === "ACTIVE") lotId = existing.id;
+      else {
+        const lotRef = db.collection("lots").doc();
+        const lot: LotDoc = {
+          lotNumber: "", name: `${product.name} — stampa`, valueType: "product", valueAmount: 1,
+          productKey: product.name.toUpperCase(), productId, promotionId: null, codeFormat: "numeric_qr", codeLength: 8,
+          totalCodes: 0, validFrom: null, expiresAt: null, status: "ACTIVE", maxCodesPerStudentPerDay: null,
+          maxPointsPerStudentPerDay: null, maxTotalUses: null, minLevel: null, createdAt: now, createdBy: admin, usedCount: 0, cancelledCount: 0,
+        };
+        await db.runTransaction(async (t) => {
+          const seq = await nextSeq(t, "lot");
+          lot.lotNumber = `${new Date().getFullYear()}-${String(seq).padStart(3, "0")}`;
+          t.create(lotRef, lot);
+          t.update(pRef, { printLotId: lotRef.id });
+        });
+        lotId = lotRef.id;
+      }
+    }
+  }
+  if (!lotId) throw new HttpsError("invalid-argument", "Prodotto o lotto mancante");
+  const lotRef = db.doc(`lots/${lotId}`);
+  const lotSnap = await lotRef.get();
+  if (!lotSnap.exists || lotSnap.data()?.status !== "ACTIVE") throw new HttpsError("failed-precondition", "Lotto non attivo");
+  const lot = lotSnap.data() as LotDoc;
+
+  for (let i = 0; i < 20; i++) {
+    const code = randomCode(lot.codeFormat === "alphanumeric" ? "alphanumeric" : "numeric", lot.codeLength);
+    const ref = db.collection("codes").doc(code);
+    try {
+      await db.runTransaction(async (t) => {
+        if ((await t.get(ref)).exists) throw new Error("DUP");
+        const doc: CodeDoc & { printedAt: Timestamp } = { lotId: lotRef.id, status: "ACTIVE", usedBy: null, usedAt: null, transactionId: null, createdAt: now, printedAt: now };
+        t.create(ref, doc);
+        t.update(lotRef, { totalCodes: FieldValue.increment(1) });
+      });
+      return { code, lotId: lotRef.id, lotName: lot.name, productName: product?.name ?? lot.productKey ?? lot.name, reward: product?.reward ?? null, stampTarget: product?.stampTarget ?? null };
+    } catch (e) {
+      if (!(e instanceof Error && e.message === "DUP")) throw e;
+    }
+  }
+  throw new HttpsError("internal", "Impossibile generare un codice univoco");
+});
+
+/** Restituisce i prossimi N codici ATTIVI non ancora stampati del lotto e li segna come stampati. */
+export const printNextCodes = onCall(async (req) => {
+  await requireAdmin(req);
+  const lotId = String(req.data?.lotId ?? "");
+  const n = Math.min(200, Math.max(1, Math.floor(Number(req.data?.count) || 1)));
+  const lotRef = db.doc(`lots/${lotId}`);
+  const lotSnap = await lotRef.get();
+  if (!lotSnap.exists || lotSnap.data()?.status !== "ACTIVE") throw new HttpsError("failed-precondition", "Lotto non attivo");
+  const lot = lotSnap.data() as LotDoc;
+  const product = lot.productId ? ((await db.doc(`products/${lot.productId}`).get()).data() as ProductDoc | undefined) : undefined;
+
+  const picked: string[] = [];
+  let remainingUnprinted = 0;
+  let last: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+  for (;;) {
+    let q = db.collection("codes").where("lotId", "==", lotId).where("status", "==", "ACTIVE").orderBy("createdAt").orderBy("__name__").limit(BATCH);
+    if (last) q = q.startAfter(last);
+    const snap = await q.get();
+    if (snap.empty) break;
+    for (const d of snap.docs) {
+      if (d.get("printedAt")) continue;
+      if (picked.length < n) picked.push(d.id);
+      else remainingUnprinted++;
+    }
+    last = snap.docs[snap.docs.length - 1];
+    if (snap.size < BATCH) break;
+  }
+  if (picked.length) {
+    const now = Timestamp.now();
+    const batch = db.batch();
+    picked.forEach((id) => batch.update(db.doc(`codes/${id}`), { printedAt: now }));
+    batch.update(lotRef, { printedCount: FieldValue.increment(picked.length) });
+    await batch.commit();
+  }
+  const productName = product?.name ?? lot.productKey ?? lot.name;
+  return {
+    codes: picked.map((code) => ({ code, lotId, lotName: lot.name, productName, reward: product?.reward ?? null, stampTarget: product?.stampTarget ?? null })),
+    remainingUnprinted,
+  };
+});
+
 // ---------------------------------------------------------------- cancel*
 
 async function cancelLotCodes(lotId: string): Promise<number> {
@@ -248,6 +363,30 @@ export const cancelLot = onCall({ timeoutSeconds: 540 }, async (req) => {
   await ref.update({ status: "CANCELLED" });
   const cancelled = await cancelLotCodes(lotId);
   return { ok: true, cancelled };
+});
+
+export const deleteLot = onCall({ timeoutSeconds: 540 }, async (req) => {
+  await requireAdmin(req);
+  const lotId = String(req.data?.lotId ?? "");
+  const ref = db.doc(`lots/${lotId}`);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Lotto non trovato");
+  const lot = snap.data() as LotDoc;
+  const expired = !!lot.expiresAt && lot.expiresAt.toMillis() <= Date.now();
+  if (lot.status === "ACTIVE" && !expired) throw new HttpsError("failed-precondition", "Il lotto è attivo: disattivalo prima di eliminarlo");
+  let deleted = 0;
+  for (;;) {
+    const codes = await db.collection("codes").where("lotId", "==", lotId).limit(BATCH).get();
+    if (codes.empty) break;
+    const batch = db.batch();
+    codes.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    deleted += codes.size;
+  }
+  const products = await db.collection("products").where("printLotId", "==", lotId).get();
+  await Promise.all(products.docs.map((d) => d.ref.update({ printLotId: null })));
+  await ref.delete();
+  return { ok: true, deleted };
 });
 
 export const cancelPromotion = onCall({ timeoutSeconds: 540 }, async (req) => {
@@ -333,11 +472,14 @@ export const redeemCode = onCall(async (req) => {
     }
 
     const goalsCol = db.collection("goals").where("active", "==", true);
-    const [goalsSnap, stampGoalsSnap, appSnap] = await Promise.all([
+    const [goalsSnap, stampGoalsSnap, appSnap, productSnap] = await Promise.all([
       t.get(goalsCol.where("counterKey", "==", counterKey)),
       t.get(goalsCol.where("counterKey", "==", STAMPS_KEY)),
       t.get(db.doc("settings/app")),
+      lot.productId ? t.get(db.doc(`products/${lot.productId}`)) : Promise.resolve(null),
     ]);
+    const product = productSnap?.exists ? (productSnap.data() as ProductDoc) : null;
+    const stampsKey = lot.productId && product ? productStampsKey(lot.productId) : STAMPS_KEY;
     const expiryDays = Number(appSnap.data()?.rewardExpiryDays ?? 0);
     const rewardExpiresAt = expiryDays > 0 ? Timestamp.fromMillis(now.toMillis() + expiryDays * 86_400_000) : null;
     const counterRef = db.doc(`counters/${student}`);
@@ -345,7 +487,7 @@ export const redeemCode = onCall(async (req) => {
     const oldVal = Number(counterSnap.data()?.[counterKey] ?? 0);
     const delta = counterKey === "points" ? points : quantity;
     const newVal = oldVal + delta;
-    const oldStamps = Number(counterSnap.data()?.[STAMPS_KEY] ?? 0);
+    const oldStamps = Number(counterSnap.data()?.[stampsKey] ?? 0);
     const newStamps = oldStamps + 1;
 
     const txId = await nextSeq(t, "tx");
@@ -371,19 +513,21 @@ export const redeemCode = onCall(async (req) => {
       status: "OK",
       createdAt: now,
     });
-    t.set(counterRef, { [counterKey]: newVal, [STAMPS_KEY]: newStamps, updatedAt: now }, { merge: true });
+    t.set(counterRef, { [counterKey]: newVal, [stampsKey]: newStamps, updatedAt: now }, { merge: true });
 
     const unlocked: { goal: string; reward: string; target: number }[] = [];
-    const stampGoals: { id: string; goal: GoalDoc }[] = stampGoalsSnap.empty
-      ? [{ id: STAMPS_KEY, goal: DEFAULT_STAMP_GOAL as GoalDoc }]
-      : stampGoalsSnap.docs.map((g) => ({ id: g.id, goal: g.data() as GoalDoc }));
+    const stampGoals: { id: string; goal: GoalDoc }[] = product && lot.productId
+      ? [{ id: lot.productId, goal: { name: product.name, counterKey: stampsKey, target: product.stampTarget, reward: product.reward, active: true } }]
+      : stampGoalsSnap.empty
+        ? [{ id: STAMPS_KEY, goal: DEFAULT_STAMP_GOAL as GoalDoc }]
+        : stampGoalsSnap.docs.map((g) => ({ id: g.id, goal: g.data() as GoalDoc }));
     const checks = [
       ...goalsSnap.docs.map((g) => ({ id: g.id, goal: g.data() as GoalDoc, oldV: oldVal, newV: newVal })),
       ...stampGoals.map((s) => ({ ...s, oldV: oldStamps, newV: newStamps })),
     ];
     for (const { id, goal, oldV, newV } of checks) {
       if (goal.target > 0 && Math.floor(newV / goal.target) > Math.floor(oldV / goal.target)) {
-        t.create(db.collection("rewards").doc(), { studentId: student, goalId: id, goalName: goal.name, reward: goal.reward, unlockedAt: now, redeemedAt: null, expiresAt: rewardExpiresAt });
+        t.create(db.collection("rewards").doc(), { studentId: student, goalId: id, goalName: goal.name, reward: goal.reward, productId: goal.counterKey === stampsKey ? lot.productId : null, unlockedAt: now, redeemedAt: null, expiresAt: rewardExpiresAt });
         t.create(db.collection("notifications").doc(), {
           type: "GOAL_REACHED",
           title: "OBIETTIVO RAGGIUNTO",

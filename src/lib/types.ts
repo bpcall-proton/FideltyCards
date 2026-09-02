@@ -22,6 +22,7 @@ export interface GenerateLotInput {
   codeFormat: CodeFormat;
   codeLength: number;
   productKey?: string;
+  productId?: string;
   promotionId?: string;
   validFrom?: string;
   expiresAt?: string;
@@ -38,6 +39,7 @@ export interface Lot {
   valueType: ValueType;
   valueAmount: number;
   productKey?: string;
+  productId?: string;
   promotionId?: string;
   codeFormat: CodeFormat;
   codeLength: number;
@@ -65,6 +67,7 @@ export interface Code {
   usedBy?: string;
   usedAt?: string;
   transactionId?: number | string;
+  printedAt?: string;
 }
 
 export interface Transaction {
@@ -92,9 +95,47 @@ export interface Goal {
   reward: string;
 }
 
+/** Prodotto premio: ogni prodotto ha la sua tessera timbri e i suoi codici. */
+export interface Product {
+  id: string;
+  name: string;
+  stampTarget: number;
+  reward: string;
+  active: boolean;
+}
+
+export const productStampsKey = (productId: string) => `${STAMPS_KEY}:${productId}`;
+
+export type PrinterType = "epos" | "browser";
+export interface Printer {
+  id: string;
+  name: string;
+  type: PrinterType;
+  /** ePOS: IP/host della stampante (es. 192.168.1.50) */
+  host?: string;
+  /** ePOS: device id (default local_printer) */
+  deviceId?: string;
+  /** ePOS: usa https (necessario da sito https) */
+  secure?: boolean;
+}
+export interface PrinterSettings {
+  printers: Printer[];
+  defaultId?: string;
+}
+
+export interface IssuedCode {
+  code: string;
+  lotId: string;
+  lotName: string;
+  productName: string;
+  reward?: string | null;
+  stampTarget?: number | null;
+}
+
 export interface UnlockedReward {
   id: string;
   reward: string;
+  productId?: string;
   unlockedAt: string;
   /** studente ha premuto RISCATTA; in attesa di conferma admin */
   requestedAt?: string;
@@ -129,6 +170,7 @@ export const isRewardExpired = (r: UnlockedReward, now = Date.now()) => !r.redee
 export interface StudentStatus {
   counters: Record<string, number>;
   goals: Goal[];
+  products: Product[];
   rewards: UnlockedReward[];
   settings: AppSettings;
 }
@@ -186,6 +228,8 @@ export interface LoyaltyApi {
   listTransactions(lotId?: string): Promise<Transaction[]>;
   cancelCode(code: string): Promise<void>;
   cancelLot(lotId: string): Promise<void>;
+  deleteLot(lotId: string): Promise<void>;
+  printNextCodes(lotId: string, count: number): Promise<{ codes: IssuedCode[]; remainingUnprinted: number }>;
   cancelPromotion(promotionId: string): Promise<void>;
   listNotifications(): Promise<AdminNotification[]>;
   getSettings(): Promise<AppSettings>;
@@ -193,6 +237,12 @@ export interface LoyaltyApi {
   listGoals(): Promise<Goal[]>;
   saveGoal(goal: Omit<Goal, "id"> & { id?: string }): Promise<void>;
   deleteGoal(id: string): Promise<void>;
+  listProducts(): Promise<Product[]>;
+  saveProduct(p: Omit<Product, "id"> & { id?: string }): Promise<void>;
+  deleteProduct(id: string): Promise<void>;
+  issueCode(input: { productId?: string; lotId?: string }): Promise<IssuedCode>;
+  getPrinters(): Promise<PrinterSettings>;
+  savePrinters(s: PrinterSettings): Promise<void>;
 
   redeemCode(code: string, deviceId?: string): Promise<RedeemResult>;
   myStatus(): Promise<StudentStatus>;

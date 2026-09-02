@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Ban, Download, FileSpreadsheet, FileText, QrCode, Search } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Ban, Download, FileSpreadsheet, FileText, Printer as PrinterIcon, QrCode, Search, Trash2 } from "lucide-react";
+import { printCodes } from "@/lib/print";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { exportCsv, exportExcel, exportPdfQr, exportPdfTable } from "@/lib/export";
-import { codeFormatLabel, codeStatusLabel, describeValue, type Code, type CodeStatus, type Lot, type Transaction } from "@/lib/types";
+import { codeFormatLabel, codeStatusLabel, describeValue, type Code, type CodeStatus, type Lot, type PrinterSettings, type Transaction } from "@/lib/types";
 import { fmtDate, fmtDateTime, fmtInt } from "@/lib/utils";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Progress, Select } from "@/components/ui";
 
@@ -18,6 +19,7 @@ const STATUS_VARIANT: Record<CodeStatus, "success" | "secondary" | "warning" | "
 export default function LotDetail() {
   const { id = "" } = useParams();
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [lot, setLot] = useState<Lot | null>(null);
   const [codes, setCodes] = useState<Code[]>([]);
   const [txs, setTxs] = useState<Transaction[]>([]);
@@ -26,6 +28,13 @@ export default function LotDetail() {
   const [page, setPage] = useState(0);
   const [progress, setProgress] = useState<string | null>(null);
   const [tab, setTab] = useState<"codes" | "history">("codes");
+  const [printers, setPrinters] = useState<PrinterSettings>({ printers: [] });
+  const [printerId, setPrinterId] = useState("");
+  const [printN, setPrintN] = useState(20);
+  const [printMsg, setPrintMsg] = useState<string | null>(null);
+  useEffect(() => {
+    void api.getPrinters().then((pr) => { setPrinters(pr); setPrinterId((cur) => cur || pr.defaultId || pr.printers[0]?.id || "browser"); });
+  }, []);
 
   const load = useCallback(async () => {
     const [l, c, t] = await Promise.all([api.getLot(id), api.listCodes(id), api.listTransactions(id)]);
@@ -53,6 +62,30 @@ export default function LotDetail() {
     if (!lot || !confirm(t("confirmCancelLot", { n: lot.lotNumber }))) return;
     await api.cancelLot(lot.id);
     await load();
+  }
+  async function printNext() {
+    if (!lot) return;
+    setPrintMsg(t("prPrinting"));
+    try {
+      const r = await api.printNextCodes(lot.id, printN);
+      if (r.codes.length === 0) { setPrintMsg(t("lpExhausted")); return; }
+      await printCodes(printers.printers.find((p) => p.id === printerId), r.codes, t("appName"));
+      setPrintMsg(r.remainingUnprinted === 0 ? t("lpPrintedLast", { n: r.codes.length }) : t("lpPrinted", { n: r.codes.length, r: r.remainingUnprinted }));
+      await load();
+    } catch (err) {
+      setPrintMsg(t("prPrintError", { e: err instanceof Error ? err.message : String(err) }));
+    }
+  }
+  async function deleteLot() {
+    if (!lot || !confirm(t("confirmDeleteLot", { n: lot.lotNumber }))) return;
+    setProgress(t("ldDeleting"));
+    try {
+      await api.deleteLot(lot.id);
+      navigate("/admin/lots");
+    } catch (err) {
+      setProgress(null);
+      alert(err instanceof Error ? err.message : String(err));
+    }
   }
   async function cancelCode(c: Code) {
     if (!confirm(t("confirmCancelCode", { c: c.code }))) return;
@@ -104,8 +137,26 @@ export default function LotDetail() {
             <span className="flex-1" />
             {lot.promotionId && <Button size="sm" variant="outline" onClick={cancelPromotion}><Ban className="h-4 w-4" /> {t("ldCancelPromo")}</Button>}
             {lot.status === "ACTIVE" && <Button size="sm" variant="destructive" onClick={cancelLot}><Ban className="h-4 w-4" /> {t("ldCancelLot")}</Button>}
+            {(lot.status !== "ACTIVE" || (lot.expiresAt && new Date(lot.expiresAt).getTime() <= Date.now())) && (
+              <Button size="sm" variant="destructive" onClick={deleteLot} disabled={!!progress}><Trash2 className="h-4 w-4" /> {t("ldDeleteLot")}</Button>
+            )}
           </div>
           {progress && <p className="text-sm text-primary">{progress}</p>}
+          {lot.status === "ACTIVE" && (
+            <div className="rounded-lg border p-3 space-y-2">
+              <div className="text-sm font-semibold flex items-center gap-2"><PrinterIcon className="h-4 w-4" /> {t("lpTitle")}</div>
+              <p className="text-xs text-muted-foreground">{t("lpHint", { n: fmtInt(codes.filter((c) => c.status === "ACTIVE" && !c.printedAt).length) })}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input type="number" min={1} max={200} value={printN} onChange={(e) => setPrintN(Math.max(1, Math.min(200, Number(e.target.value) || 1)))} className="w-24" />
+                <Select value={printerId} onChange={(e) => setPrinterId(e.target.value)} className="w-48">
+                  {printers.printers.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  <option value="browser">{t("prBrowser")}</option>
+                </Select>
+                <Button size="sm" onClick={printNext} disabled={printMsg === t("prPrinting")}><PrinterIcon className="h-4 w-4" /> {t("lpPrintN", { n: printN })}</Button>
+              </div>
+              {printMsg && <p className="text-sm">{printMsg}</p>}
+            </div>
+          )}
         </CardContent>
       </Card>
 

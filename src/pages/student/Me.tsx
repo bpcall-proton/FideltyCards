@@ -4,7 +4,7 @@ import { Check, Coffee, CreditCard, Gift, PartyPopper, QrCode, Star, Ticket, Tre
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { DAILY_CODES_LIMIT, levelName, useStudent } from "@/lib/student";
-import { STAMPS_KEY, isRewardExpired, type Transaction } from "@/lib/types";
+import { STAMPS_KEY, isRewardExpired, productStampsKey, type Transaction, type UnlockedReward } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
 import { fmtDate, fmtDateTime, fmtInt } from "@/lib/utils";
 import { Badge, Button, buttonVariants, Card, CardContent, CardHeader, CardTitle, Modal, Progress } from "@/components/ui";
@@ -57,13 +57,21 @@ export default function Me() {
   const missing = goal.target - cyclePoints;
   const level = user?.level ?? 1;
 
-  const STAMPS = Math.max(1, settings.stampTarget);
-  const stampReward = settings.stampReward || t("defReward");
-  const stampsTotal = status.counters[STAMPS_KEY] ?? 0;
-  const stampCycles = Math.floor(stampsTotal / STAMPS);
-  const cardFull = pending.length > 0 && stampsTotal % STAMPS === 0 && stampsTotal > 0;
-  const stamped = cardFull ? STAMPS : stampsTotal % STAMPS;
-  const stampCols = STAMPS <= 6 ? STAMPS : 5;
+  const cardDefs = [
+    ...status.products.map((p) => ({ key: p.id, title: p.name, target: Math.max(1, p.stampTarget), reward: p.reward, counterKey: productStampsKey(p.id), match: (r: UnlockedReward) => r.productId === p.id })),
+    ...(status.products.length === 0 || (status.counters[STAMPS_KEY] ?? 0) > 0
+      ? [{ key: "general", title: t("stampTitle"), target: Math.max(1, settings.stampTarget), reward: settings.stampReward || t("defReward"), counterKey: STAMPS_KEY, match: (r: UnlockedReward) => !r.productId }]
+      : []),
+  ];
+  const cards = cardDefs.map((c) => {
+    const total = status.counters[c.counterKey] ?? 0;
+    const cardPending = pending.filter(c.match);
+    const full = cardPending.length > 0 && total % c.target === 0 && total > 0;
+    return { ...c, total, cycles: Math.floor(total / c.target), stamped: full ? c.target : total % c.target, cols: c.target <= 6 ? c.target : 5, pending: cardPending };
+  });
+  const first = cards[0];
+  const STAMPS = first?.target ?? 1;
+  const stamped = first?.stamped ?? 0;
 
   const panel = "rounded-3xl bg-white border border-[#eee3d8] p-6 shadow-sm space-y-4";
   const pill = "inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-3 py-1 text-xs font-bold";
@@ -101,30 +109,31 @@ export default function Me() {
         </div>
       </section>
 
-      <section className={panel}>
-        <div className="flex items-center gap-2 font-black"><CreditCard className="h-4 w-4 text-primary" /> {t("stampTitle")}</div>
+      {cards.map((c) => (
+      <section key={c.key} className={panel}>
+        <div className="flex items-center gap-2 font-black"><CreditCard className="h-4 w-4 text-primary" /> {c.title}</div>
         <div className="rounded-2xl bg-gradient-to-br from-[#f97316] to-[#c2410c] p-5 text-white shadow-inner space-y-4">
           <div className="flex justify-between items-center">
             <div className="font-black tracking-wide">{t("appName")}</div>
             <div className="text-sm font-semibold">{user?.name}</div>
           </div>
-          <div className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${stampCols}, minmax(0, 1fr))` }}>
-            {Array.from({ length: STAMPS }).map((_, i) => (
-              <div key={i} className={`aspect-square rounded-xl grid place-items-center border-2 transition ${i < stamped ? "bg-white text-primary border-white shadow" : "border-dashed border-white/50 text-white/40"}`}>
-                {i < stamped ? <Check className="h-6 w-6 stroke-[3]" /> : <Coffee className="h-5 w-5" />}
+          <div className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${c.cols}, minmax(0, 1fr))` }}>
+            {Array.from({ length: c.target }).map((_, i) => (
+              <div key={i} className={`aspect-square rounded-xl grid place-items-center border-2 transition ${i < c.stamped ? "bg-white text-primary border-white shadow" : "border-dashed border-white/50 text-white/40"}`}>
+                {i < c.stamped ? <Check className="h-6 w-6 stroke-[3]" /> : <Coffee className="h-5 w-5" />}
               </div>
             ))}
           </div>
           <div className="flex justify-between text-xs font-semibold opacity-90">
-            <span>{stamped} / {STAMPS}</span>
-            <span>🎁 {stampReward}</span>
+            <span>{c.stamped} / {c.target}</span>
+            <span>🎁 {c.reward}</span>
           </div>
         </div>
         <div className="text-sm text-[#7a6a5c] font-semibold">
-          {t("stampHint", { n: STAMPS - stamped, r: stampReward })}
-          {stampCycles > 0 && <span className="text-[#9a8a7c] font-normal"> · {t("stampCycle", { n: stampCycles })}</span>}
+          {t("stampHint", { n: c.target - c.stamped, r: c.reward })}
+          {c.cycles > 0 && <span className="text-[#9a8a7c] font-normal"> · {t("stampCycle", { n: c.cycles })}</span>}
         </div>
-        {pending.map((r) => (
+        {c.pending.map((r) => (
           <div key={r.id} className="rounded-2xl border-2 border-primary bg-primary/5 p-4 space-y-3">
             <div className="flex items-center gap-2 font-black text-primary"><Gift className="h-5 w-5" /> {t("rwEntitled")}</div>
             <div className="text-2xl font-black">🎁 {r.reward}</div>
@@ -144,6 +153,7 @@ export default function Me() {
           </div>
         ))}
       </section>
+      ))}
 
       {showPoints && (
         <section className={panel}>

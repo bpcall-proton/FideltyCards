@@ -8,6 +8,8 @@ import Generate from "@/pages/admin/Generate";
 import Lots from "@/pages/admin/Lots";
 import LotDetail from "@/pages/admin/LotDetail";
 import Goals from "@/pages/admin/Goals";
+import Products from "@/pages/admin/Products";
+import Printers from "@/pages/admin/Printers";
 import Notifications from "@/pages/admin/Notifications";
 import Redeem from "@/pages/student/Redeem";
 import Me from "@/pages/student/Me";
@@ -41,6 +43,8 @@ function Routed() {
             <Route path="/admin/lots" element={<Lots />} />
             <Route path="/admin/lots/:id" element={<LotDetail />} />
             <Route path="/admin/goals" element={<Goals />} />
+            <Route path="/admin/products" element={<Products />} />
+            <Route path="/admin/printers" element={<Printers />} />
             <Route path="/admin/notifications" element={<Notifications />} />
           </>
         )}

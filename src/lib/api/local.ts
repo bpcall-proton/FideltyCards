@@ -1,9 +1,9 @@
 import { randomCode, normalizeCode } from "../codegen";
 import type {
-  AdminNotification, AppSettings, Code, GenerateLotInput, Goal, Lot, LoyaltyApi, Promotion, RedeemResult,
+  AdminNotification, AppSettings, Code, GenerateLotInput, Goal, IssuedCode, Lot, LoyaltyApi, PrinterSettings, Product, Promotion, RedeemResult,
   StudentStatus, Transaction, UnlockedReward, User,
 } from "../types";
-import { DEFAULT_SETTINGS, STAMPS_KEY, isRewardExpired } from "../types";
+import { DEFAULT_SETTINGS, STAMPS_KEY, isRewardExpired, productStampsKey } from "../types";
 import { activePromotions } from "../promotions";
 
 /**
@@ -23,6 +23,8 @@ interface Store {
   notifications: AdminNotification[];
   txSeq: number;
   settings: AppSettings;
+  products: (Product & { printLotId?: string })[];
+  printers: PrinterSettings;
 }
 
 const KEY = "fidelty-demo-store";
@@ -39,6 +41,8 @@ function fresh(): Store {
     currentUserId: "admin-1",
     lots: [], codes: [], transactions: [], counters: {}, rewards: {}, notifications: [], txSeq: 983420,
     settings: { ...DEFAULT_SETTINGS, stampReward: "Caffè gratis" },
+    products: [],
+    printers: { printers: [] },
     goals: [
       { id: uid(), name: "300 punti", counterKey: "points", target: 300, reward: "Caffè gratis" },
       { id: uid(), name: "5 caffè", counterKey: "CAFFE", target: 5, reward: "Caffè gratis" },
@@ -93,7 +97,7 @@ export class LocalApi implements LoyaltyApi {
     const len = Math.max(i.codeLength, i.quantity > 100000 ? 8 : 6);
     const lot: LotRow = {
       id: uid(), lotNumber: `${year}-${String(seq).padStart(3, "0")}`, name: i.name, valueType: i.valueType,
-      valueAmount: i.valueAmount, productKey: i.productKey?.toUpperCase() || undefined, promotionId: i.promotionId,
+      valueAmount: i.valueAmount, productKey: i.productKey?.toUpperCase() || undefined, productId: i.productId, promotionId: i.promotionId,
       codeFormat: i.codeFormat, codeLength: len, totalCodes: i.quantity, validFrom: i.validFrom, expiresAt: i.expiresAt,
       status: "ACTIVE", maxCodesPerStudentPerDay: i.maxCodesPerStudentPerDay, maxPointsPerStudentPerDay: i.maxPointsPerStudentPerDay,
       maxTotalUses: i.maxTotalUses, minLevel: i.minLevel, createdAt: new Date().toISOString(),
@@ -135,6 +139,17 @@ export class LocalApi implements LoyaltyApi {
     this.s.codes.forEach((c) => { if (c.lotId === lotId && c.status === "ACTIVE") c.status = "CANCELLED"; });
     save(this.s);
   }
+  async deleteLot(lotId: string) {
+    this.requireAdmin();
+    const l = this.s.lots.find((x) => x.id === lotId);
+    if (!l) return;
+    const expired = !!l.expiresAt && new Date(l.expiresAt).getTime() <= Date.now();
+    if (l.status === "ACTIVE" && !expired) throw new Error("LOT_ACTIVE");
+    this.s.lots = this.s.lots.filter((x) => x.id !== lotId);
+    this.s.codes = this.s.codes.filter((c) => c.lotId !== lotId);
+    this.s.products.forEach((p) => { if (p.printLotId === lotId) p.printLotId = undefined; });
+    save(this.s);
+  }
   async cancelPromotion(promotionId: string) {
     this.requireAdmin();
     for (const l of this.s.lots.filter((x) => x.promotionId === promotionId)) await this.cancelLot(l.id);
@@ -149,6 +164,52 @@ export class LocalApi implements LoyaltyApi {
     save(this.s);
   }
   async deleteGoal(id: string) { this.requireAdmin(); this.s.goals = this.s.goals.filter((g) => g.id !== id); save(this.s); }
+
+  async listProducts() { return this.s.products.slice(); }
+  async saveProduct(p: Omit<Product, "id"> & { id?: string }) {
+    this.requireAdmin();
+    const idx = this.s.products.findIndex((x) => x.id === p.id);
+    if (idx >= 0) this.s.products[idx] = { ...this.s.products[idx], ...p, id: this.s.products[idx].id };
+    else this.s.products.push({ ...p, id: uid() });
+    save(this.s);
+  }
+  async deleteProduct(id: string) { this.requireAdmin(); const p = this.s.products.find((x) => x.id === id); if (p) p.active = false; save(this.s); }
+  async issueCode(input: { productId?: string; lotId?: string }): Promise<IssuedCode> {
+    this.requireAdmin();
+    const p = input.productId ? this.s.products.find((x) => x.id === input.productId) : undefined;
+    let lot = this.s.lots.find((l) => l.id === (input.lotId ?? p?.printLotId) && l.status === "ACTIVE");
+    if (!lot) {
+      if (!p) throw new Error("NOT_FOUND");
+      lot = (await this.generateLot({ name: `${p.name} — stampa`, valueType: "product", valueAmount: 1, quantity: 1, codeFormat: "numeric_qr", codeLength: 8, productKey: p.name, productId: p.id })) as LotRow;
+      p.printLotId = lot.id;
+      this.s.codes.pop();
+    }
+    const existing = new Set(this.s.codes.map((c) => c.code));
+    let code = randomCode(lot.codeFormat, lot.codeLength);
+    while (existing.has(code)) code = randomCode(lot.codeFormat, lot.codeLength);
+    this.s.codes.push({ id: uid(), lotId: lot.id, code, status: "ACTIVE", printedAt: new Date().toISOString() });
+    lot.totalCodes += 1;
+    save(this.s);
+    return { code, lotId: lot.id, lotName: lot.name, productName: p?.name ?? lot.productKey ?? lot.name, reward: p?.reward ?? null, stampTarget: p?.stampTarget ?? null };
+  }
+  async printNextCodes(lotId: string, count: number) {
+    this.requireAdmin();
+    const lot = this.s.lots.find((l) => l.id === lotId && l.status === "ACTIVE");
+    if (!lot) throw new Error("LOT_NOT_ACTIVE");
+    const p = lot.productId ? this.s.products.find((x) => x.id === lot.productId) : undefined;
+    const unprinted = this.s.codes.filter((c) => c.lotId === lotId && c.status === "ACTIVE" && !c.printedAt);
+    const picked = unprinted.slice(0, Math.max(1, count));
+    const now = new Date().toISOString();
+    picked.forEach((c) => { c.printedAt = now; });
+    save(this.s);
+    const productName = p?.name ?? lot.productKey ?? lot.name;
+    return {
+      codes: picked.map((c) => ({ code: c.code, lotId, lotName: lot.name, productName, reward: p?.reward ?? null, stampTarget: p?.stampTarget ?? null })),
+      remainingUnprinted: unprinted.length - picked.length,
+    };
+  }
+  async getPrinters() { return this.s.printers; }
+  async savePrinters(s: PrinterSettings) { this.requireAdmin(); this.s.printers = s; save(this.s); }
 
   async redeemCode(raw: string, deviceId?: string): Promise<RedeemResult> {
     const me = this.user();
@@ -199,20 +260,25 @@ export class LocalApi implements LoyaltyApi {
     const oldVal = counters[key] ?? 0;
     const newVal = oldVal + delta;
     counters[key] = newVal;
-    const oldStamps = counters[STAMPS_KEY] ?? 0;
+    const product = lot.productId ? this.s.products.find((p) => p.id === lot.productId) : undefined;
+    const stampsKey = product ? productStampsKey(product.id) : STAMPS_KEY;
+    const oldStamps = counters[stampsKey] ?? 0;
     const newStamps = oldStamps + 1;
-    counters[STAMPS_KEY] = newStamps;
+    counters[stampsKey] = newStamps;
 
     const unlocked: { goal: string; reward: string; target: number }[] = [];
     const st = this.s.settings;
+    const stampGoal = product
+      ? { id: product.id, name: product.name, counterKey: stampsKey, target: product.stampTarget, reward: product.reward }
+      : { id: STAMPS_KEY, name: STAMPS_KEY, counterKey: STAMPS_KEY, target: st.stampTarget, reward: st.stampReward };
     const checks = [
       ...this.s.goals.filter((g) => g.counterKey === key).map((g) => ({ g, o: oldVal, n: newVal })),
-      { g: { id: STAMPS_KEY, name: STAMPS_KEY, counterKey: STAMPS_KEY, target: st.stampTarget, reward: st.stampReward }, o: oldStamps, n: newStamps },
+      { g: stampGoal, o: oldStamps, n: newStamps },
     ];
     for (const { g, o, n } of checks) {
       if (g.target > 0 && Math.floor(n / g.target) > Math.floor(o / g.target)) {
         (this.s.rewards[me.id] ??= []).push({
-          id: uid(), reward: g.reward, unlockedAt: now.toISOString(),
+          id: uid(), reward: g.reward, productId: g.counterKey === stampsKey ? product?.id : undefined, unlockedAt: now.toISOString(),
           expiresAt: st.rewardExpiryDays > 0 ? new Date(now.getTime() + st.rewardExpiryDays * 86_400_000).toISOString() : undefined,
         });
         this.s.notifications.push({
@@ -232,7 +298,7 @@ export class LocalApi implements LoyaltyApi {
 
   async myStatus(): Promise<StudentStatus> {
     const me = this.user();
-    return { counters: this.s.counters[me.id] ?? {}, goals: await this.listGoals(), rewards: (this.s.rewards[me.id] ?? []).slice().reverse(), settings: this.s.settings };
+    return { counters: this.s.counters[me.id] ?? {}, goals: await this.listGoals(), products: this.s.products.filter((p) => p.active), rewards: (this.s.rewards[me.id] ?? []).slice().reverse(), settings: this.s.settings };
   }
   async getSettings() { return this.s.settings; }
   async saveSettings(s: AppSettings) { this.requireAdmin(); this.s.settings = s; save(this.s); }
